@@ -1,0 +1,61 @@
+{
+  "name": "backpack/profile",
+  "description": "Implement user profile API & CRUD for backpack",
+  "keywords": [
+    "parabellumKoval",
+    "backpack",
+    "laravel",
+    "user",
+    "account",
+    "profile"
+  ],
+  "homepage": "https://github.com/parabellumkoval/backpack-profile",
+  "license": "MIT",
+  "type": "library",
+  "authors": [
+    {
+      "name": "parabellumKoval",
+      "email": "parabellum.koval@gmail.com",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": "^8.0"
+  },
+  "require-dev": {
+  },
+  "autoload": {
+    "psr-4": {
+        "Backpack\\Profile\\": "src",
+        "Backpack\\Profile\\Database\\Factories\\": "database/factories"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Backpack\\Profile\\Tests\\": "tests"
+    }
+  },
+  "scripts": {
+      "post-autoload-dump": "@php ./vendor/bin/testbench package:discover --ansi",
+      "analyse": "vendor/bin/phpstan analyse",
+      "test": "vendor/bin/pest",
+      "test-coverage": "vendor/bin/pest --coverage",
+      "format": "vendor/bin/pint"
+  },
+  "config": {
+      "sort-packages": true,
+      "allow-plugins": {
+          "pestphp/pest-plugin": true,
+          "phpstan/extension-installer": true
+      }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Backpack\\Profile\\ServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
