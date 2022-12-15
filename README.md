@@ -1,12 +1,12 @@
 # Account
 
-[![Build Status](https://travis-ci.org/aimix/account.svg?branch=master)](https://travis-ci.org/aimix/account)
+[![Build Status](https://travis-ci.org/parabellumKoval/backpack-profile.svg?branch=master)](https://travis-ci.org/parabellumKoval/backpack-profile)
 [![styleci](https://styleci.io/repos/CHANGEME/shield)](https://styleci.io/repos/CHANGEME)
-[![Coverage Status](https://coveralls.io/repos/github/aimix/account/badge.svg?branch=master)](https://coveralls.io/github/aimix/account?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/parabellumKoval/backpack-profile/badge.svg?branch=master)](https://coveralls.io/github/parabellumKoval/backpack-profile?branch=master)
 
-[![Packagist](https://img.shields.io/packagist/v/aimix/account.svg)](https://packagist.org/packages/aimix/account)
-[![Packagist](https://poser.pugx.org/aimix/account/d/total.svg)](https://packagist.org/packages/aimix/account)
-[![Packagist](https://img.shields.io/packagist/l/aimix/account.svg)](https://packagist.org/packages/aimix/account)
+[![Packagist](https://img.shields.io/packagist/v/parabellumKoval/backpack-profile.svg)](https://packagist.org/packages/parabellumKoval/backpack-profile)
+[![Packagist](https://poser.pugx.org/parabellumKoval/backpack-profile/d/total.svg)](https://packagist.org/packages/parabellumKoval/backpack-profile)
+[![Packagist](https://img.shields.io/packagist/l/parabellumKoval/backpack-profile.svg)](https://packagist.org/packages/parabellumKoval/backpack-profile)
 
 Package description: CHANGE ME
 
@@ -14,13 +14,13 @@ Package description: CHANGE ME
 
 Install via composer
 ```bash
-composer require aimix/account
+composer require parabellumkoval/backpack-profile
 ```
 
 ### Publish Configuration File
 
 ```bash
-php artisan vendor:publish --provider="aimix\account\ServiceProvider" --tag="config"
+php artisan vendor:publish --provider="Backpack\Profile\ServiceProvider" --tag="config"
 ```
 
 ## Usage
@@ -34,8 +34,5 @@ instead of using the issue tracker.
 
 ## Credits
 
-- [](https://github.com/aimix/account)
-- [All contributors](https://github.com/aimix/account/graphs/contributors)
-
-This package is bootstrapped with the help of
-[melihovv/laravel-package-generator](https://github.com/melihovv/laravel-package-generator).
+- [](https://github.com/parabellumKoval/backpack-profile)
+- [All contributors](https://github.com/parabellumKoval/backpack-profile/graphs/contributors)
