@@ -16,43 +16,43 @@ class ProfileObserver
      * @return void
      */
 
-    public function created(User $user)
+    public function created(Profile $profile)
     {
-        $usermeta = new Profile;
-        $usermeta->user_id = $user->id;
-        $usermeta->firstname = $user->name;
-        $usermeta->email = $user->email;
+        // $usermeta = new Profile;
+        // $usermeta->user_id = $user->id;
+        // $usermeta->firstname = $user->name;
+        // $usermeta->email = $user->email;
         
-        $usermeta->lastname = request()->input('lastname');
-        $usermeta->telephone = request()->input('telephone');
-        $usermeta->patronymic = request()->input('patronymic');
-        $usermeta->gender = request()->input('gender');
-        $usermeta->birthday = request()->input('birthday');
-        $usermeta->address = request()->input('address');
-        $usermeta->subscription = request()->input('subscription');
-        $usermeta->extras = request()->input('extras');
+        // $usermeta->lastname = request()->input('lastname');
+        // $usermeta->telephone = request()->input('telephone');
+        // $usermeta->patronymic = request()->input('patronymic');
+        // $usermeta->gender = request()->input('gender');
+        // $usermeta->birthday = request()->input('birthday');
+        // $usermeta->address = request()->input('address');
+        // $usermeta->subscription = request()->input('subscription');
+        // $usermeta->extras = request()->input('extras');
 
-        if(config('aimix.account.enable_referral_system')) {
-            $usermeta->referral_code = $this->generateUniqueReferralCode();
-            $usermeta->referrer_id = request()->input('referrer_id');
-        }
+        // if(config('aimix.account.enable_referral_system')) {
+        //     $usermeta->referral_code = $this->generateUniqueReferralCode();
+        //     $usermeta->referrer_id = request()->input('referrer_id');
+        // }
         
-        $usermeta->save();
+        // $usermeta->save();
 
-        $usermeta->notify(new UserRegistred($usermeta));
+        // $usermeta->notify(new UserRegistred($usermeta));
 
-        if(config('aimix.account.enable_referral_system')) {
-            $referrer = $usermeta;
-            for($i = 0; $i < config('aimix.account.referral_levels'); $i++) {
-                $referrer = $referrer->referrer;
-                $level = $i + 1;
+        // if(config('aimix.account.enable_referral_system')) {
+        //     $referrer = $usermeta;
+        //     for($i = 0; $i < config('aimix.account.referral_levels'); $i++) {
+        //         $referrer = $referrer->referrer;
+        //         $level = $i + 1;
 
-                if(!$referrer)
-                    return;
+        //         if(!$referrer)
+        //             return;
 
-                $referrer->notify(new ReferralRegistred($usermeta, $level));
-            }
-        }
+        //         $referrer->notify(new ReferralRegistred($usermeta, $level));
+        //     }
+        // }
     }
     
 

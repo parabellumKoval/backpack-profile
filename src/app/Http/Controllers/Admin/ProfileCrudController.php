@@ -108,7 +108,23 @@ class ProfileCrudController extends CrudController
             [
               'name' => 'is_default',
               'label' => 'По-умолчанию',
-              'type' => 'radio'
+              'type' => 'checkbox',
+              'attributes' => [
+                'class' => 'check-is_default',
+                'onclick' => '
+                  return toggle(event);
+
+                  function toggle(event) {
+                    const target = event.target
+
+                    document.getElementsByClassName("check-is_default")
+                      .forEach(function (item) {
+                        if(item !== target) 
+                          item.checked = false
+                      })
+                  };
+                '
+              ]
             ],
             [
               'name' => 'country',
