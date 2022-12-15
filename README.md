@@ -8,7 +8,7 @@
 [![Packagist](https://poser.pugx.org/parabellumKoval/backpack-profile/d/total.svg)](https://packagist.org/packages/parabellumKoval/backpack-profile)
 [![Packagist](https://img.shields.io/packagist/l/parabellumKoval/backpack-profile.svg)](https://packagist.org/packages/parabellumKoval/backpack-profile)
 
-Package description: This package implements the user profile system for Laravel Backpack. Provides a database, CRUD interface, API routes etc.
+This package provides a quick starter kit for implementing a user profile system for Laravel Backpack. Provides a database, CRUD interface, API routes and more.
 
 ## Installation
 
