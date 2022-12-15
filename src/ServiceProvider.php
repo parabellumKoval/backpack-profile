@@ -15,11 +15,8 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
     {
         Profile::observe(ProfileObserver::class);
 
-        $this->publishes([
-            self::CONFIG_PATH => config_path('/backpack/profile.php'),
-        ], 'config');
-
-        $this->loadTranslationsFrom(__DIR__.'/resources/lang', 'shop');
+        // LANGUAGES
+        $this->loadTranslationsFrom(__DIR__.'/resources/lang', 'backpack-profile');
     
 	      // Migrations
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
@@ -28,9 +25,23 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/routes/backpack/routes.php');
         $this->loadRoutesFrom(__DIR__.'/routes/api/profile.php');
 
+
+        $this->publishes([
+          self::CONFIG_PATH => config_path('/backpack/profile.php'),
+        ], 'config');
+        
         $this->publishes([
             __DIR__.'/resources/views' => resource_path('views'),
-        ]);
+        ], 'views');
+
+        $this->publishes([
+            __DIR__.'/database/migrations' => resource_path('database/migrations'),
+        ], 'migrations');
+
+        $this->publishes([
+            __DIR__.'/routes/backpack/routes.php' => resource_path('/routes/backpack/profile/routes.php'),
+            __DIR__.'/routes/api/profile.php' => resource_path('/routes/backpack/profile/api.php'),
+        ], 'routes');
         
         // View::composer('*', function ($view) {
         //     $user = \Auth::user();

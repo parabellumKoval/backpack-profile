@@ -1,4 +1,4 @@
-# Account
+# Backpack-profile
 
 [![Build Status](https://travis-ci.org/parabellumKoval/backpack-profile.svg?branch=master)](https://travis-ci.org/parabellumKoval/backpack-profile)
 [![styleci](https://styleci.io/repos/CHANGEME/shield)](https://styleci.io/repos/CHANGEME)
@@ -8,7 +8,7 @@
 [![Packagist](https://poser.pugx.org/parabellumKoval/backpack-profile/d/total.svg)](https://packagist.org/packages/parabellumKoval/backpack-profile)
 [![Packagist](https://img.shields.io/packagist/l/parabellumKoval/backpack-profile.svg)](https://packagist.org/packages/parabellumKoval/backpack-profile)
 
-Package description: CHANGE ME
+Package description: This package implements the user profile system for Laravel Backpack. Provides a database, CRUD interface, API routes etc.
 
 ## Installation
 
@@ -17,10 +17,31 @@ Install via composer
 composer require parabellumkoval/backpack-profile
 ```
 
-### Publish Configuration File
+Migrate
+```bash
+php artisan migrate
+```
 
+### Publish
+
+#### Configuration File
 ```bash
 php artisan vendor:publish --provider="Backpack\Profile\ServiceProvider" --tag="config"
+```
+
+#### Views File
+```bash
+php artisan vendor:publish --provider="Backpack\Profile\ServiceProvider" --tag="views"
+```
+
+#### Migrations File
+```bash
+php artisan vendor:publish --provider="Backpack\Profile\ServiceProvider" --tag="migrations"
+```
+
+#### Routes File
+```bash
+php artisan vendor:publish --provider="Backpack\Profile\ServiceProvider" --tag="routes"
 ```
 
 ## Usage
