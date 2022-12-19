@@ -1,7 +1,6 @@
 # Backpack-profile
 
 [![Build Status](https://travis-ci.org/parabellumKoval/backpack-profile.svg?branch=master)](https://travis-ci.org/parabellumKoval/backpack-profile)
-[![styleci](https://styleci.io/repos/CHANGEME/shield)](https://styleci.io/repos/CHANGEME)
 [![Coverage Status](https://coveralls.io/repos/github/parabellumKoval/backpack-profile/badge.svg?branch=master)](https://coveralls.io/github/parabellumKoval/backpack-profile?branch=master)
 
 [![Packagist](https://img.shields.io/packagist/v/parabellumKoval/backpack-profile.svg)](https://packagist.org/packages/parabellumKoval/backpack-profile)
@@ -46,7 +45,10 @@ php artisan vendor:publish --provider="Backpack\Profile\ServiceProvider" --tag="
 
 ## Usage
 
-CHANGE ME
+### Seeders
+```bash
+php artisan db:seed --class="Backpack\Profile\database\seeders\ProfileSeeder"
+```
 
 ## Security
 

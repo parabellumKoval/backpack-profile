@@ -42,15 +42,16 @@ class Profile extends Model
     public function toArray() {
       return [
         'id' => $this->id,
+        'login' => $this->login,
         'firstname' => $this->firstname,
         'lastname' => $this->lastname,
         'fullname' => $this->fullname,
-        'partonymic' => $this->partonymic,
-        'telephone' => $this->telephone,
+        'phone' => $this->phone,
         'photo' => $this->photo? url($this->photo): null,
         'email' => $this->email,
         'referrer_id' => $this->referrer_id,
         'referral_code' => $this->referral_code,
+        'addresses' => $this->addresses,
         'extras' => $this->extras,
         'created_at' => $this->created_at->format('d.m.Y'),
         // 'bonus_balance' => $this->bonus_balance,

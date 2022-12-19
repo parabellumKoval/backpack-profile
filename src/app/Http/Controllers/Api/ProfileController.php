@@ -1,19 +1,79 @@
 <?php
 
-namespace Backpack\Profile\app\Http\Controllers;
-
-use App\Http\Controllers\Controller as BaseController;
+namespace Backpack\Profile\app\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
 use App\Rules\EquallyPassword;
+use \Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Validator;
 
 use Backpack\Profile\app\Models\Profile;
 
-class ProfileController extends BaseController
+class ProfileController extends \App\Http\Controllers\Controller
 {
-    // public function index(Request $request) {
-    //   return view('account.index');
-    // }
+    public function index(Request $request) {
+      $profiles = Profile::all();
+      return response()->json($profiles);
+    }
+
+    public function show(Request $request, $id) {
+      try {
+        $profile = Profile::findOrFail($id);
+      }catch(ModelNotFoundException $e) {
+        return response()->json($e->getMessage(), 404);
+      }
+
+      return response()->json($profile);
+    }
+
+    public function update(Request $request, $id) {
+      $data = $request->only(['firstname', 'lastname', 'phone', 'addresses', 'extras', 'photo']);
+
+      $validator = Validator::make($data, [
+        'firstname' => 'required|string|min:2|max:255',
+        'lastname' => 'nullable|string|min:2|max:255',
+        'phone' => 'nullable|string|min:2|max:255',
+        'address[].country' => 'nullable|string|min:2|max:255',
+        'address[].city' => 'nullable|string|min:2|max:255',
+        'address[].state' => 'nullable|string|min:2|max:255',
+        'address[].street' => 'nullable|string|min:2|max:255',
+        'address[].apartment' => 'nullable|string|min:2|max:255',
+        'address[].zip' => 'nullable|string|min:2|max:255'
+      ]);
+  
+      if ($validator->fails()) {
+        return response()->json($validator->errors(), 400);
+      }
+
+      try {
+        $profile = Profile::findOrFail($id);
+      }catch(ModelNotFoundException $e) {
+        return response()->json($e->getMessage(), 404);
+      }
+
+      try {
+        if(isset($data['firstname']))
+          $profile->firstname = $data['firstname'];
+        
+        if(isset($data['lastname']))
+          $profile->lastname = $data['lastname'];
+
+        if(isset($data['phone']))
+          $profile->phone = $data['phone'];
+
+        if(isset($data['photo']))
+          $profile->photo = $data['photo'];
+        
+        if(isset($data['addresses']))
+          $profile->addresses = $data['addresses'];
+
+        $profile->save();
+      }catch(\Exception $e){
+        return response()->json($e->getMessages(), 400);
+      }
+
+      return response()->json($profile);
+    }
 
     // public function transactions(Request $request) {
     //   $transactions = Transaction::where('usermeta_id', \Auth::user()->usermeta->id)->where('is_completed', 1)->orWhere(function($query){
