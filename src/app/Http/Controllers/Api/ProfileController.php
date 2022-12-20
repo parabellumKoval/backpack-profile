@@ -8,6 +8,7 @@ use \Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Validator;
 
 use Backpack\Profile\app\Models\Profile;
+use Backpack\Profile\app\Http\Resources\ProfileTinyResource;
 
 class ProfileController extends \App\Http\Controllers\Controller
 {
@@ -73,6 +74,19 @@ class ProfileController extends \App\Http\Controllers\Controller
       }
 
       return response()->json($profile);
+    }
+
+
+    public function referrals(Request $request, $id) {
+      try {
+        $profile = Profile::findOrFail($id);
+      }catch(ModelNotFoundException $e) {
+        return response()->json($e->getMessage(), 404);
+      }
+
+      $referrals = $profile->referrals()->paginate(12);
+      
+      return ProfileTinyResource::collection($referrals);
     }
 
     // public function transactions(Request $request) {

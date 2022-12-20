@@ -23,4 +23,7 @@ Route::prefix('api/profile')->controller(ProfileController::class)->group(functi
 
   Route::post('{id}/update', 'update');
 
+
+  Route::get('{id}/referrals', 'referrals');
+
 });
