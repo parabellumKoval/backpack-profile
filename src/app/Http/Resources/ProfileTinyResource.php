@@ -19,6 +19,8 @@ class ProfileTinyResource extends JsonResource
         'fullname' => $this->fullname,
         'email' => $this->email,
         'photo' => $this->photo? url($this->photo): null,
+        'referrals' => $this->referrals? self::collection($this->referrals): null,
+        'created_at' => $this->created_at
       ];
     }
 }
