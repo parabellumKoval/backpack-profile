@@ -8,6 +8,7 @@ use \Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Validator;
 
 use Backpack\Profile\app\Models\Profile;
+use Backpack\Profile\app\Http\Resources\ProfileFullResource;
 use Backpack\Profile\app\Http\Resources\ProfileTinyResource;
 
 class ProfileController extends \App\Http\Controllers\Controller
@@ -23,6 +24,8 @@ class ProfileController extends \App\Http\Controllers\Controller
       }catch(ModelNotFoundException $e) {
         return response()->json($e->getMessage(), 404);
       }
+
+      $profile = new ProfileFullResource($profile);
 
       return response()->json($profile);
     }
