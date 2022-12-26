@@ -4,7 +4,7 @@ namespace Backpack\Profile\app\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ProfileTinyResource extends JsonResource
+class ProfileFullResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
