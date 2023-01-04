@@ -18,6 +18,7 @@ class CreateAkProfilesTable extends Migration
             $table->string('login')->unique();
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
+            $table->string('remember_token', 100)->nullable();
             $table->string('password');
             $table->string('photo')->nullable();
             $table->string('firstname')->nullable();

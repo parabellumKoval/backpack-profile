@@ -23,7 +23,7 @@ class LoginController extends Controller
      */
     public function __invoke(Request $request)
     {
-        if (!Auth::guard('profile')->attempt($request->only('email', 'password'))) {
+        if (!Auth::guard('profile')->attempt($request->only('email', 'password'), true)) {
             throw new AuthenticationException();
         }
 
