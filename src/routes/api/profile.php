@@ -18,12 +18,11 @@ use Backpack\Profile\app\Http\Controllers\Api\ProfileController;
 
 Route::prefix('api/profile')->controller(ProfileController::class)->group(function () {
   
-  Route::get('', 'index');
-  Route::get('{id}', 'show');
+  Route::get('', 'show')->middleware('profile');;
 
-  Route::post('{id}/update', 'update');
+  Route::post('/update', 'update')->middleware('profile');;
 
 
-  Route::get('{id}/referrals', 'referrals');
+  Route::get('/referrals', 'referrals')->middleware('profile');;
 
 });
