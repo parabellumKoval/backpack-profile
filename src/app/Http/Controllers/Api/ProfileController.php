@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Rules\EquallyPassword;
 use \Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 use Backpack\Profile\app\Models\Profile;
 use Backpack\Profile\app\Http\Resources\ProfileFullResource;
@@ -13,24 +14,29 @@ use Backpack\Profile\app\Http\Resources\ProfileTinyResource;
 
 class ProfileController extends \App\Http\Controllers\Controller
 {
-    public function index(Request $request) {
-      $profiles = Profile::all();
-      return response()->json($profiles);
-    }
+    // public function index(Request $request) {
+    //   $profiles = Profile::all();
+    //   return response()->json($profiles);
+    // }
 
-    public function show(Request $request, $id) {
-      try {
-        $profile = Profile::findOrFail($id);
-      }catch(ModelNotFoundException $e) {
-        return response()->json($e->getMessage(), 404);
-      }
+    public function show(Request $request) {
+      $profile = Auth::guard('profile')->user();
+
+      if(!$profile)
+        return response()->json('Profile not found, access denied', 403);
 
       $profile = new ProfileFullResource($profile);
 
       return response()->json($profile);
     }
 
-    public function update(Request $request, $id) {
+    public function update(Request $request) {
+
+      $profile = Auth::guard('profile')->user();
+
+      if(!$profile)
+        return response()->json('Profile not found, access denied', 403);
+
       $data = $request->only(['firstname', 'lastname', 'phone', 'addresses', 'extras', 'photo']);
 
       $validator = Validator::make($data, [
@@ -47,12 +53,6 @@ class ProfileController extends \App\Http\Controllers\Controller
   
       if ($validator->fails()) {
         return response()->json($validator->errors(), 400);
-      }
-
-      try {
-        $profile = Profile::findOrFail($id);
-      }catch(ModelNotFoundException $e) {
-        return response()->json($e->getMessage(), 404);
       }
 
       try {
@@ -80,12 +80,11 @@ class ProfileController extends \App\Http\Controllers\Controller
     }
 
 
-    public function referrals(Request $request, $id) {
-      try {
-        $profile = Profile::findOrFail($id);
-      }catch(ModelNotFoundException $e) {
-        return response()->json($e->getMessage(), 404);
-      }
+    public function referrals(Request $request) {
+      $profile = Auth::guard('profile')->user();
+
+      if(!$profile)
+        return response()->json('Profile not found, access denied', 403);
 
       $referrals = $profile->referrals()->paginate(12);
       
