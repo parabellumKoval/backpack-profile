@@ -2,7 +2,7 @@
 
 namespace Backpack\Profile\app\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Backpack\CRUD\app\Models\Traits\CrudTrait;
 use Illuminate\Notifications\Notifiable;
 
@@ -10,7 +10,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Backpack\Profile\database\factories\ProfileFactory;
 
-class Profile extends Model
+class Profile extends Authenticatable
 {
     use CrudTrait;
     use Notifiable;
