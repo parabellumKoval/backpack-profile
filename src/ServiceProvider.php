@@ -24,7 +24,7 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
         // Routes
         $this->loadRoutesFrom(__DIR__.'/routes/backpack/routes.php');
         $this->loadRoutesFrom(__DIR__.'/routes/api/profile.php');
-        $this->loadRoutesFrom(__DIR__.'/routes/api/auth.php');
+        $this->loadRoutesFrom(__DIR__.'/routes/web/auth.php');
 
 
         $this->publishes([
@@ -42,7 +42,7 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
         $this->publishes([
             __DIR__.'/routes/backpack/routes.php' => resource_path('/routes/backpack/profile/routes.php'),
             __DIR__.'/routes/api/profile.php' => resource_path('/routes/backpack/profile/api.php'),
-            __DIR__.'/routes/api/auth.php' => resource_path('/routes/backpack/profile/auth.php'),
+            __DIR__.'/routes/web/auth.php' => resource_path('/routes/backpack/profile/auth.php'),
         ], 'routes');
         
         // View::composer('*', function ($view) {

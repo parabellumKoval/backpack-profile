@@ -23,12 +23,20 @@ class LoginController extends Controller
      */
     public function __invoke(Request $request)
     {
-        if (!Auth::guard('profile')->attempt($request->only('email', 'password'), true)) {
-            throw new AuthenticationException();
-        }
+      $credentials = $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required'],
+      ]);
 
+      if (Auth::guard('profile')->attempt($credentials)) {
         $request->session()->regenerate();
-        return Auth::guard('profile')->user();
+
+        $user = Auth::guard('profile')->user();
+
+        return response()->json($user);
+      }
+
+      return response()->json('The provided credentials do not match our records.', 400);
     }
 
     /**
@@ -38,5 +46,7 @@ class LoginController extends Controller
     public function logout(Request $request)
     {
       Auth::guard('profile')->logout();
+
+      return response()->json('Logout');
     }
 }
