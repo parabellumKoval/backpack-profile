@@ -28,7 +28,7 @@ class LoginController extends Controller
         'password' => ['required'],
       ]);
 
-      if (Auth::guard('profile')->attempt($credentials)) {
+      if (Auth::guard('profile')->attempt($credentials, true)) {
         $request->session()->regenerate();
 
         $user = Auth::guard('profile')->user();
