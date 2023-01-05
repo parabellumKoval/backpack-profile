@@ -109,36 +109,6 @@ class ProfileController extends \App\Http\Controllers\Controller
     // }
 
 
-    public function addresess(Request $request){
-      $user = \Auth::user();
-          $usermeta = $user->usermeta;
-      
-      $usermeta->addressDetails = $request->input('address_details');
-      
-      $usermeta->save();
-      
-      return back();
-    }
-	
-    public function edit(Request $request) {
-      $user = \Auth::user();
-      $usermeta = $user->usermeta;
-
-      foreach($request->input() as $key => $value) {
-        if($key == 'email')
-          $user[$key] == $value;
-        elseif($key != '_token') 
-          $usermeta[$key] = $value;
-
-        if($key == 'firstname')
-          $user['name'] = $value;
-      }
-
-      $user->save();
-      $usermeta->save();
-
-      return back()->with('type', 'success')->with('message', 'Your account has been successfully updated!');
-    }
 
     public function changePassword(Request $request) {
       $user = \Auth::user();
