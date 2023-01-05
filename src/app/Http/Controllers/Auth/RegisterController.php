@@ -32,6 +32,10 @@ class RegisterController extends Controller
         if ($validator->fails())
           return response()->json($validator->messages(), 400);
         
+        if($request->referrer_code) {
+          $referrer = Profile::where('referrer_code', $request->referrer_code)->first();
+        } 
+
         try {
           $user = Profile::create([
             'login' => $request->email,
@@ -39,6 +43,7 @@ class RegisterController extends Controller
             'lastname' => $request->lastname,
             'password' => Hash::make($request->password),
             'email' => $request->email,
+            'referrer_id' => isset($referrer) && $referrer? $referrer->id: null,
             'referrer_code' => Str::random(8)
           ]);
         }catch(\Extension) {
@@ -52,6 +57,7 @@ class RegisterController extends Controller
         'firstname' => 'required|string|max:255',
         'lastname' => 'required|string|max:255',
         'email' => 'required|string|email|unique:ak_profiles,email',
-        'password' => 'required|string|min:6|confirmed'
+        'password' => 'required|string|min:6|confirmed',
+        'referrer_code' => 'nullable|string'
     ];
 }
