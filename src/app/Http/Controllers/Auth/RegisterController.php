@@ -50,7 +50,22 @@ class RegisterController extends Controller
           return response()->json('error');
         }
 
-        return response()->json($user);
+        if($this->login($request->email, $request->password))
+          return response()->json($user)
+        else
+          return response()->json('User was registered but not logged in', 400);
+    }
+
+    private login($email, $password) {
+      if (Auth::guard('profile')->attempt([
+        'email' => $email,
+        'password' => $password
+      ], true)) {
+        $request->session()->regenerate();
+        return true;
+      }else {
+        return false;
+      }
     }
 
     private $rules = [
