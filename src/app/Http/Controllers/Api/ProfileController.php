@@ -18,6 +18,13 @@ class ProfileController extends \App\Http\Controllers\Controller
     //   $profiles = Profile::all();
     //   return response()->json($profiles);
     // }
+    private $FULL_RESOURCE = '';
+    private $TINY_RESOURCE = '';
+
+    public function __construct() {
+      $this->FULL_RESOURCE = config('backpack.profile.full_resource', 'Backpack\Profile\app\Http\Resources\ProfileFullResource');
+      $this->TINY_RESOURCE = config('backpack.profile.tiny_resource', 'Backpack\Profile\app\Http\Resources\ProfileTinyResource');
+    }
 
     public function show(Request $request) {
       $profile = Auth::guard('profile')->user();
@@ -25,7 +32,7 @@ class ProfileController extends \App\Http\Controllers\Controller
       if(!$profile)
         return response()->json('Profile not found, access denied', 403);
 
-      $profile = new ProfileFullResource($profile);
+      $profile = new $this->FULL_RESOURCE($profile);
 
       return response()->json($profile);
     }
@@ -47,8 +54,8 @@ class ProfileController extends \App\Http\Controllers\Controller
         'address[].city' => 'nullable|string|min:2|max:255',
         'address[].state' => 'nullable|string|min:2|max:255',
         'address[].street' => 'nullable|string|min:2|max:255',
-        'address[].apartment' => 'nullable|string|min:2|max:255',
-        'address[].zip' => 'nullable|string|min:2|max:255'
+        'address[].apartment' => 'nullable|string|min:1|max:255',
+        'address[].zip' => 'nullable|string|min:6|max:255'
       ]);
   
       if ($validator->fails()) {
@@ -88,7 +95,7 @@ class ProfileController extends \App\Http\Controllers\Controller
 
       $referrals = $profile->referrals()->paginate(12);
       
-      return ProfileTinyResource::collection($referrals);
+      return $this->TINY_RESOURCE::collection($referrals);
     }
 
     // public function transactions(Request $request) {

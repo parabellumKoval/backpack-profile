@@ -8,7 +8,17 @@ return [
   // 'enable_cashback' => true,
   // 'cashback_value' => 1, // cashback %
 
+  // PROFILE MODEL
+  'profile_model' => 'Backpack\Profile\app\Models\Profile',
 
+  // ORDER
   'order_model' => 'Backpack\Store\app\Models\Order',
+
+  // REVIEW
   'review_model' => 'Backpack\Reviews\app\Models\Review',
+
+  // RESOURCES
+  'full_resource' => 'Backpack\Profile\app\Http\Resources\ProfileFullResource',
+
+  'tiny_resource' => 'Backpack\Profile\app\Http\Resources\ProfileTinyResource',
 ];
