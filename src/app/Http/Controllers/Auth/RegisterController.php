@@ -33,12 +33,14 @@ class RegisterController extends Controller
         if ($validator->fails())
           return response()->json($validator->messages(), 400);
         
+        $profile_model = config('backpack.profile.profile_model', 'Backpack\Profile\app\Models\Profile');  
+
         if($request->referrer_code) {
-          $referrer = Profile::where('referrer_code', $request->referrer_code)->first();
+          $referrer = $profile_model::where('referrer_code', $request->referrer_code)->first();
         } 
 
         try {
-          $user = Profile::create([
+          $user = $profile_model::create([
             'login' => $request->email,
             'firstname' => $request->firstname,
             'lastname' => $request->lastname,
