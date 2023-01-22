@@ -14,17 +14,21 @@ use Backpack\Profile\app\Http\Resources\ProfileTinyResource;
 
 class ProfileController extends \App\Http\Controllers\Controller
 {
-    // public function index(Request $request) {
-    //   $profiles = Profile::all();
-    //   return response()->json($profiles);
-    // }
+  
     private $FULL_RESOURCE = '';
     private $TINY_RESOURCE = '';
+    private $PROFILE_MODEL = '';
 
     public function __construct() {
       $this->FULL_RESOURCE = config('backpack.profile.full_resource', 'Backpack\Profile\app\Http\Resources\ProfileFullResource');
       $this->TINY_RESOURCE = config('backpack.profile.tiny_resource', 'Backpack\Profile\app\Http\Resources\ProfileTinyResource');
+      $this->PROFILE_MODEL = config('backpack.profile.profile_model', 'Backpack\Profile\app\Models\Profile');
     }
+
+    // public function test(Request $request) {
+    //   //return $this->PROFILE_MODEL::getRules();
+    //   return $this->update($request);
+    // }
 
     public function show(Request $request) {
       $profile = Auth::guard('profile')->user();
@@ -37,50 +41,49 @@ class ProfileController extends \App\Http\Controllers\Controller
       return response()->json($profile);
     }
 
+    /**
+     * Update profile data from request data
+     * 
+     * @param Request $request
+     * @return Backpack/Profile/app/Models/Profile $profile
+     */
+
     public function update(Request $request) {
 
+      // Get user instance from AUTH guard
       $profile = Auth::guard('profile')->user();
+      //$profile = $this->PROFILE_MODEL::find(1);
 
       if(!$profile)
         return response()->json('Profile not found, access denied', 403);
 
-      $data = $request->only(['firstname', 'lastname', 'phone', 'addresses', 'extras', 'photo']);
+      // Get only allowed fields
+      $data = $request->only($this->PROFILE_MODEL::getFieldKeys());
 
-      $validator = Validator::make($data, [
-        'firstname' => 'required|string|min:2|max:255',
-        'lastname' => 'nullable|string|min:2|max:255',
-        'phone' => 'nullable|string|min:2|max:255',
-        'address[].country' => 'nullable|string|min:2|max:255',
-        'address[].city' => 'nullable|string|min:2|max:255',
-        'address[].state' => 'nullable|string|min:2|max:255',
-        'address[].street' => 'nullable|string|min:2|max:255',
-        'address[].apartment' => 'nullable|string|min:1|max:255',
-        'address[].zip' => 'nullable|string|min:6|max:255'
-      ]);
+      // Apply validation rules to data
+      $validator = Validator::make($data, $this->PROFILE_MODEL::getRules());
   
       if ($validator->fails()) {
         return response()->json($validator->errors(), 400);
       }
 
       try {
-        if(isset($data['firstname']))
-          $profile->firstname = $data['firstname'];
-        
-        if(isset($data['lastname']))
-          $profile->lastname = $data['lastname'];
+        foreach($data as $field_name => $field_value){
 
-        if(isset($data['phone']))
-          $profile->phone = $data['phone'];
-
-        if(isset($data['photo']))
-          $profile->photo = $data['photo'];
-        
-        if(isset($data['addresses']))
-          $profile->addresses = $data['addresses'];
+          $field = $this->PROFILE_MODEL::$fields[$field_name] ?? $this->PROFILE_MODEL::$fields[$field_name.'.*'];
+          
+          if(isset($field['store_in'])) {
+            $field_old_value = $profile->{$field['store_in']};
+            $field_old_value[$field_name] = $field_value;
+            $profile->{$field['store_in']} = $field_old_value;
+          }else {
+            $profile->{$field_name} = $field_value;
+          }
+        }
 
         $profile->save();
       }catch(\Exception $e){
-        return response()->json($e->getMessages(), 400);
+        return response()->json($e->getMessage(), 400);
       }
 
       return response()->json($profile);
