@@ -74,7 +74,7 @@ class Profile extends Authenticatable
         'zip' => [
           'rules' => 'nullable|string|min:6|max:255',
           'store_in' => 'addresses',
-        ]
+        ],
       ],
     ];
 
@@ -108,7 +108,7 @@ class Profile extends Authenticatable
      * @return Array
     */
     public static function getRules($fields = null) {
-      $node = $fields? $fields: self::$fields;
+      $node = $fields? $fields: static::$fields;
 
       $rules = [];
       
@@ -122,7 +122,7 @@ class Profile extends Authenticatable
           if(in_array($field, ['store_in']))
             continue;
           
-          $selfRules = self::getRules($value);
+          $selfRules = static::getRules($value);
 
           if(is_array($selfRules))
             foreach($selfRules as $k => $v) {
@@ -143,7 +143,7 @@ class Profile extends Authenticatable
     }
 
     public static function getFieldKeys() {
-      $keys = array_keys(self::$fields);
+      $keys = array_keys(static::$fields);
       $keys = array_map(function($item) {
         return preg_replace('/[\*\.]/u', '', $item);
       }, $keys);
