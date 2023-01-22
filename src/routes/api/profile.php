@@ -18,6 +18,8 @@ use Backpack\Profile\app\Http\Controllers\Api\ProfileController;
 
 Route::prefix('api/profile')->controller(ProfileController::class)->group(function () {
   
+  Route::post('/test', 'test');
+
   Route::get('', 'show')->middleware(['api', 'auth:profile']);
 
   Route::post('/update', 'update')->middleware(['api', 'auth:profile']);

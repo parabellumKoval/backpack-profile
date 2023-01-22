@@ -30,10 +30,54 @@ class Profile extends Authenticatable
     // protected $hidden = [];
     protected $dates = [
     ];
+
     protected $casts = [
       'extras' => 'array',
       'addresses' => 'array'
     ];
+
+    public static $fields = [
+      'firstname' => [
+        'rules' => 'required|string|min:2|max:255'
+      ],
+      
+      'lastname' => [
+        'rules' => 'nullable|string|min:2|max:255'
+      ],
+      
+      'phone' => [
+        'rules' => 'nullable|string|min:2|max:255'
+      ],
+
+      'addresses.*' => [
+        'rules' => 'array:country,city,state,street,apartment,zip',
+        'country' => [
+          'rules' => 'nullable|string|min:2|max:255',
+          'store_in' => 'addresses'
+        ],
+        'city' => [
+          'rules' => 'nullable|string|min:2|max:255',
+          'store_in' => 'addresses'
+        ],
+        'state' => [
+          'rules' => 'nullable|string|min:2|max:255',
+          'store_in' => 'addresses'
+        ],
+        'street' => [
+          'rules' => 'nullable|string|min:2|max:255',
+          'store_in' => 'addresses'
+        ],
+        'apartment' => [
+          'rules' => 'nullable|string|min:1|max:255',
+          'store_in' => 'addresses'
+        ],
+        'zip' => [
+          'rules' => 'nullable|string|min:6|max:255',
+          'store_in' => 'addresses',
+        ]
+      ],
+    ];
+
     /*
     |--------------------------------------------------------------------------
     | FUNCTIONS
@@ -45,10 +89,6 @@ class Profile extends Authenticatable
         'fullname' => $this->fullname,
         'email' => $this->email,
         'photo' => $this->photo? url($this->photo): null,
-        // 'bonus_balance' => $this->bonus_balance,
-        // 'total_earned_bonuses' => $this->total_earned_bonuses,
-        // 'this_month_earned_bonuses' => $this->this_month_earned_bonuses,
-        // 'referrals' => $this->referrals->where('is_registred', 1)->toArray(),
       ];
     }
 
@@ -61,6 +101,56 @@ class Profile extends Authenticatable
     {
       return ProfileFactory::new();
     }
+
+    /** 
+     *  Get validation rules from fields array
+     * @param Array|String $fields
+     * @return Array
+    */
+    public static function getRules($fields = null) {
+      $node = $fields? $fields: self::$fields;
+
+      $rules = [];
+      
+      if(is_string($node)) {
+        return $node;
+      }
+
+      if(is_array($node)) {
+        
+        foreach($node as $field => $value) {
+          if(in_array($field, ['store_in']))
+            continue;
+          
+          $selfRules = self::getRules($value);
+
+          if(is_array($selfRules))
+            foreach($selfRules as $k => $v) {
+              if($k === 'rules') {
+                $rules[$field] = $v;
+              }else {
+                $name = implode('.', [$field, $k]);
+                $rules[$name] = $v;
+              }
+            }
+          else
+            $rules[$field] = $selfRules;
+        }
+
+      }
+
+      return $rules;
+    }
+
+    public static function getFieldKeys() {
+      $keys = array_keys(self::$fields);
+      $keys = array_map(function($item) {
+        return preg_replace('/[\*\.]/u', '', $item);
+      }, $keys);
+
+      return $keys;
+    }
+
     /*
     |--------------------------------------------------------------------------
     | RELATIONS
@@ -83,9 +173,6 @@ class Profile extends Authenticatable
       return $this->hasMany(self::class, 'referrer_id', 'id');
     }
 
-    public function thisMonthTransactions() {
-      return $this->hasMany('Aimix\Account\app\Models\Transaction')->whereMonth('created_at', now()->format('m'));
-    }
     /*
     |--------------------------------------------------------------------------
     | SCOPES
@@ -97,61 +184,36 @@ class Profile extends Authenticatable
     | ACCESSORS
     |--------------------------------------------------------------------------
     */
+
     public function getFullnameAttribute() {
-      return $this->firstname . ' ' . $this->lastname;
+      return implode(' ', [
+        $this->firstname,
+        $this->lastname
+      ]);
     }
 
-    public function getBonusBalanceAttribute() {
-      $balance = 0;
+    
+    public function setAddressDetailsAttribute($value) {
+      $extras = $this->extras;
+      $extras['address'] = $value;
       
-      foreach($this->transactions->where('is_completed', 1)->where('balance', '!==', null) as $transaction) {
-        $balance += $transaction->change;
-      }
-
-      return round($balance, 2);
+      $this->extras = $extras;
     }
-
-    public function getThisMonthEarnedBonusesAttribute() {
-      $bonuses = 0;
-
-      foreach($this->thisMonthTransactions->where('is_completed', 1)->where('change', '>', 0) as $transaction) {
-        $bonuses += $transaction->change;
-      }
-
-      return round($bonuses, 2);
-    }
-
-    public function getTotalEarnedBonusesAttribute() {
-      $bonuses = 0;
-
-      foreach($this->transactions->where('is_completed', 1)->where('change', '>', 0) as $transaction) {
-        $bonuses += $transaction->change;
-      }
-
-      return round($bonuses, 2);
-    }
-
-	public function setAddressDetailsAttribute($value) {
-		$extras = $this->extras;
-		$extras['address'] = $value;
-		
-		$this->extras = $extras;
-	}
 	
-	public function getAddressDetailsAttribute() {
-		if(isset($this->extras['address']))
-			return $this->extras['address'];
-		else
-			return array(
-				'is_default' => 1,
-				'country' => '',
-				'street' => '',
-				'apartment' => '',
-				'city' => '',
-				'state' => '',
-				'zip' => ''	
-			);
-	}
+    public function getAddressDetailsAttribute() {
+      if(isset($this->extras['address']))
+        return $this->extras['address'];
+      else
+        return array(
+          'is_default' => 1,
+          'country' => '',
+          'street' => '',
+          'apartment' => '',
+          'city' => '',
+          'state' => '',
+          'zip' => ''	
+        );
+    }
 	
     // public function getReferralTreeAttribute() {
     //   $referralTree = [];
