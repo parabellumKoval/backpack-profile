@@ -48,6 +48,9 @@ class RegisterController extends Controller
       // TRY TO CREATE USER
       try {
         $profile = new $profile_model;
+        $profile->login = $data['email'];
+        $profile->referrer_id = isset($referrer) && $referrer? $referrer->id: null;
+        $profile->referrer_code = Str::random(8);
 
         foreach($data as $field_name => $field_value){
 
