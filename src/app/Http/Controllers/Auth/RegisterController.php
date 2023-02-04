@@ -28,34 +28,64 @@ class RegisterController extends Controller
      */
     public function __invoke(Request $request)
     {
-        $validator = Validator::make($request->all(), $this->rules);
+      // GET PROFILE MODEL
+      $profile_model = config('backpack.profile.profile_model', 'Backpack\Profile\app\Models\Profile');  
 
-        if ($validator->fails())
-          return response()->json($validator->messages(), 400);
+      // GET ONLY ALLOWED FIELDS
+      $data = $request->only($profile_model::getFieldKeys('fieldsForRegistration'));
+      
+      // VALIDETE
+      $validator = Validator::make($data, $profile_model::getRules(null, 'fieldsForRegistration'));
+
+      if($validator->fails())
+        return response()->json($validator->messages(), 400);
         
-        $profile_model = config('backpack.profile.profile_model', 'Backpack\Profile\app\Models\Profile');  
+      // GET REFERRER
+      if($request->referrer_code) {
+        $referrer = $profile_model::where('referrer_code', $request->referrer_code)->first();
+      } 
 
-        if($request->referrer_code) {
-          $referrer = $profile_model::where('referrer_code', $request->referrer_code)->first();
-        } 
+      // TRY TO CREATE USER
+      try {
+        $profile = new $profile_model;
 
-        try {
-          $user = $profile_model::create([
-            'login' => $request->email,
-            'firstname' => $request->firstname,
-            'lastname' => $request->lastname,
-            'password' => Hash::make($request->password),
-            'email' => $request->email,
-            'referrer_id' => isset($referrer) && $referrer? $referrer->id: null,
-            'referrer_code' => Str::random(8)
-          ]);
-        }catch(\Extension) {
-          return response()->json('error');
+        foreach($data as $field_name => $field_value){
+
+          $field = $profile_model::$fieldsForRegistration[$field_name] ?? $profile_model::$fieldsForRegistration[$field_name.'.*'];
+          
+          if(isset($field['store_in'])) {
+            $field_old_value = $profile->{$field['store_in']};
+            $field_old_value[$field_name] = $field_value;
+            $profile->{$field['store_in']} = $field_old_value;
+          }else {
+            $profile->{$field_name} = $field_value;
+          }
         }
+
+        $profile->save();
+      }
+      catch(\Exception $e)
+      {
+        return response()->json($e->getMessage(), 400);
+      }
+
+        // try {
+        //   $user = $profile_model::create([
+        //     'login' => $request->email,
+        //     'firstname' => $request->firstname,
+        //     'lastname' => $request->lastname,
+        //     'password' => Hash::make($request->password),
+        //     'email' => $request->email,
+        //     'referrer_id' => isset($referrer) && $referrer? $referrer->id: null,
+        //     'referrer_code' => Str::random(8)
+        //   ]);
+        // }catch(\Extension) {
+        //   return response()->json('error');
+        // }
 
         if($this->login($request->email, $request->password)){
           $request->session()->regenerate();
-          return response()->json($user);
+          return response()->json($profile);
         }else {
           return response()->json('User was registered but not logged in', 400);
         }
