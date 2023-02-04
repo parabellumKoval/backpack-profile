@@ -56,6 +56,9 @@ class RegisterController extends Controller
 
           $field = $profile_model::$fieldsForRegistration[$field_name] ?? $profile_model::$fieldsForRegistration[$field_name.'.*'];
           
+          if(isset($field['hidden']) && $field['hidden'])
+            continue;
+          
           if(isset($field['store_in'])) {
             $field_old_value = $profile->{$field['store_in']};
             $field_old_value[$field_name] = $field_value;

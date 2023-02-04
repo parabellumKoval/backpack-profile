@@ -88,7 +88,7 @@ class Profile extends Authenticatable
       ],
       
       'email' => [
-        'rules' => 'required|email|min:2|max:255'
+        'rules' => 'required|string|email|unique:ak_profiles,email'
       ],
       
       'password' => [
