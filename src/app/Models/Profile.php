@@ -78,6 +78,28 @@ class Profile extends Authenticatable
       ],
     ];
 
+    public static $fieldsForRegistration = [
+      'firstname' => [
+        'rules' => 'required|string|min:2|max:255'
+      ],
+      
+      'lastname' => [
+        'rules' => 'required|string|min:2|max:255'
+      ],
+      
+      'email' => [
+        'rules' => 'required|email|min:2|max:255'
+      ],
+      
+      'password' => [
+        'rules' => 'required|string|min:6|confirmed'
+      ],
+      
+      'referrer_code' => [
+        'rules' => 'nullable|string'
+      ]
+    ];
+
     /*
     |--------------------------------------------------------------------------
     | FUNCTIONS
@@ -107,7 +129,7 @@ class Profile extends Authenticatable
      * @param Array|String $fields
      * @return Array
     */
-    public static function getRules($fields = null) {
+    public static function getRules($fields = null, $type = 'fields') {
       $node = $fields? $fields: static::$fields;
 
       $rules = [];
@@ -142,7 +164,7 @@ class Profile extends Authenticatable
       return $rules;
     }
 
-    public static function getFieldKeys() {
+    public static function getFieldKeys($type = 'fields') {
       $keys = array_keys(static::$fields);
       $keys = array_map(function($item) {
         return preg_replace('/[\*\.]/u', '', $item);
