@@ -130,7 +130,7 @@ class Profile extends Authenticatable
      * @return Array
     */
     public static function getRules($fields = null, $type = 'fields') {
-      $node = $fields? $fields: static::$fields;
+      $node = $fields? $fields: static::$$type;
 
       $rules = [];
       
@@ -165,7 +165,7 @@ class Profile extends Authenticatable
     }
 
     public static function getFieldKeys($type = 'fields') {
-      $keys = array_keys(static::$fields);
+      $keys = array_keys(static::$$type);
       $keys = array_map(function($item) {
         return preg_replace('/[\*\.]/u', '', $item);
       }, $keys);
