@@ -58,6 +58,9 @@ class RegisterController extends Controller
           
           if(isset($field['hidden']) && $field['hidden'])
             continue;
+
+          if(isset($field['hash']) && $field['hash'])
+            $field_value = Hash::make($field_value);
           
           if(isset($field['store_in'])) {
             $field_old_value = $profile->{$field['store_in']};

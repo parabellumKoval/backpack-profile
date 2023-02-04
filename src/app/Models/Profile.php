@@ -92,7 +92,13 @@ class Profile extends Authenticatable
       ],
       
       'password' => [
-        'rules' => 'required|string|min:6|confirmed'
+        'rules' => 'required|string|min:6|confirmed',
+        'hash' => true
+      ],
+    
+      'password_confirmation' => [
+        'rules' => 'required|string|min:6',
+        'hidden' => true
       ],
       
       'referrer_code' => [
