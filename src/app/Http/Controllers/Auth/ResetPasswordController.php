@@ -26,7 +26,7 @@ class ResetPasswordController extends Controller
 
     $input = $request->only('email');
 
-    $url = config('backpack.profile.reset_password_redirect', '/new-password') . '/' . $token . '?email=' . $input['email'];
+    $url = config('backpack.profile.reset_password_redirect', '/') . '?token=' . $token . '&email=' . $input['email'];
 
     return redirect($url);
   }
