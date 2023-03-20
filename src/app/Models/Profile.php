@@ -5,6 +5,7 @@ namespace Backpack\Profile\app\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Backpack\CRUD\app\Models\Traits\CrudTrait;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Auth\Passwords\CanResetPassword;
 
 // FACTORY
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,6 +16,7 @@ class Profile extends Authenticatable
     use CrudTrait;
     use Notifiable;
     use HasFactory;
+    use CanResetPassword;
 
     /*
     |--------------------------------------------------------------------------
@@ -178,6 +180,7 @@ class Profile extends Authenticatable
 
       return $keys;
     }
+
 
     /*
     |--------------------------------------------------------------------------

@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use Backpack\Profile\app\Http\Controllers\Api\ProfileController;
+use Backpack\Profile\app\Http\Controllers\Auth\ResetPasswordController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,5 +26,10 @@ Route::prefix('api/profile')->controller(ProfileController::class)->group(functi
   Route::post('/update', 'update')->middleware(['api', 'auth:profile']);
 
   Route::get('/referrals', 'referrals')->middleware(['api', 'auth:profile']);
-
 });
+
+
+Route::post('api/profile/change-password', [ResetPasswordController::class, 'change_password'])
+  ->middleware(['api', 'auth:profile']);
+
+

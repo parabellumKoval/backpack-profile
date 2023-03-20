@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 
-use Backpack\Profile\app\Models\Profile;
-
 /**
  * @group Auth
  *
@@ -110,12 +108,4 @@ class RegisterController extends Controller
         return false;
       }
     }
-
-    private $rules = [
-        'firstname' => 'required|string|max:255',
-        'lastname' => 'required|string|max:255',
-        'email' => 'required|string|email|unique:ak_profiles,email',
-        'password' => 'required|string|min:6|confirmed',
-        'referrer_code' => 'nullable|string'
-    ];
 }
