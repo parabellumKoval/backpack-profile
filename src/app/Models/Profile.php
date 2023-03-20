@@ -216,6 +216,13 @@ class Profile extends Authenticatable
     |--------------------------------------------------------------------------
     */
 
+    public function getReferralsCountAttribute() {
+      if($this->referrals)
+        return count($this->referrals);
+      else
+        return 0;
+    }
+
     public function getFullnameAttribute() {
       return implode(' ', [
         $this->firstname,
