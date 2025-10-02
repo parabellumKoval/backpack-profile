@@ -26,7 +26,9 @@ class ProfileRequest extends FormRequest
     public function rules()
     {
         return [
-            // 'name' => 'required|min:5|max:255'
+            'login' => 'nullable|unique:ak_profiles|min:2|max:255',
+            'email' => 'required|email|unique:ak_profiles',
+            'password' => 'required',
         ];
     }
 

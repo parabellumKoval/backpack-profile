@@ -20,16 +20,22 @@
     }
   ],
   "require": {
-    "laravel/framework": "^8.0|^7.0|^6.0",
-    "backpack/crud": "4.1.*"
+    "php": "^8.2",
+    "laravel/framework": "^12.0",
+    "backpack/crud": "dev-store",
+    "laravel/sanctum": "^4.2.0",
+    "laravel/socialite": "^5.23.0"
   },
   "require-dev": {
   },
   "autoload": {
     "psr-4": {
-        "Backpack\\Profile\\": "src",
+        "Backpack\\Profile\\": "src/",
         "Backpack\\Profile\\Database\\Factories\\": "database/factories"
-    }
+    },
+    "files": [
+      "src/app/helpers.php"
+    ]
   },
   "autoload-dev": {
     "psr-4": {

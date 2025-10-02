@@ -1,16 +1,40 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Backpack\Profile\app\Http\Controllers\Auth\AuthController;
+use Backpack\Profile\app\Http\Controllers\Auth\PasswordResetController;
+use Backpack\Profile\app\Http\Controllers\Auth\EmailVerificationController;
+use Backpack\Profile\app\Http\Controllers\Auth\OAuthController;
 
-use Backpack\Profile\app\Http\Controllers\Auth\RegisterController;
-use Backpack\Profile\app\Http\Controllers\Auth\LoginController;
-use Backpack\Profile\app\Http\Controllers\Auth\ResetPasswordController;
+Route::prefix('api/auth')->middleware(['api', \Backpack\Profile\app\Http\Middleware\ForceJsonResponse::class])->group(function () {
+    // CSRF cookie для cookie-based SPA (если понадобится)
+    // /sanctum/csrf-cookie уже есть в Sanctum
 
-Route::post('/register', RegisterController::class)->middleware('web')->name('register');
-Route::post('/login', LoginController::class)->middleware('web')->name('login');
-Route::post('/logout', [LoginController::class, 'logout'])->middleware('web')->name('logout');
+    // Регистрация/логин/логаут
+    Route::post('register', [AuthController::class, 'register']);
+    Route::post('login',    [AuthController::class, 'login']);
+    Route::post('logout',   [AuthController::class, 'logout'])->middleware('auth:sanctum');
+    Route::get('me',        [AuthController::class, 'me'])->middleware('auth:sanctum');
 
-Route::post('/forgot-password', [ResetPasswordController::class, 'forgotPassword']);
-Route::post('/change-password', [ResetPasswordController::class, 'changePassword']);
+    // Смена пароля (аутентифицированный пользователь)
+    Route::post('password/change', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
 
-Route::get('/password/reset/{token}', [ResetPasswordController::class, 'resetPassword'])->name('password.reset');
+    // Восстановление пароля по email
+    Route::post('password/forgot', [PasswordResetController::class, 'sendResetLink']);
+    Route::post('password/reset',  [PasswordResetController::class, 'reset']);
+
+    // Подтверждение email
+    Route::post('email/verification-notification', [EmailVerificationController::class, 'send'])
+        ->middleware(['auth:sanctum','throttle:6,1']);
+		
+		Route::post('email/resend', [EmailVerificationController::class, 'sendForEmail'])
+    		->middleware('throttle:6,1');
+
+    // Подпись защищает ссылку; логин не обязателен
+    Route::get('verify-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware(['signed','throttle:6,1'])->name('verification.verify');
+
+    // Socialite (Google/Facebook)
+    Route::get('oauth/{provider}/url', [OAuthController::class, 'getRedirectUrl']); // вернёт URL провайдера
+    Route::get('oauth/{provider}/callback', [OAuthController::class, 'callback']);
+});

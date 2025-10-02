@@ -39,11 +39,11 @@ class Profile extends Authenticatable
     ];
 
     public static $fields = [
-      'firstname' => [
+      'first_name' => [
         'rules' => 'required|string|min:2|max:255'
       ],
       
-      'lastname' => [
+      'last_name' => [
         'rules' => 'nullable|string|min:2|max:255'
       ],
       
@@ -116,12 +116,20 @@ class Profile extends Authenticatable
     public function toArray() {
       return [
         'id' => $this->id,
-        'fullname' => $this->fullname,
+        'name' => $this->fullname,
         'email' => $this->email,
         'photo' => $this->photo? url($this->photo): null,
       ];
     }
 
+    public function toOrderArray() {
+      return [
+        'firstname' => $this->firstname,
+        'lastname' => $this->lastname,
+        'email' => $this->email,
+        'phone' => $this->phone
+      ];      
+    }
     /**
      * Create a new factory instance for the model.
      *
@@ -171,7 +179,13 @@ class Profile extends Authenticatable
 
       return $rules;
     }
-
+    
+    /**
+     * getFieldKeys
+     *
+     * @param  mixed $type
+     * @return void
+     */
     public static function getFieldKeys($type = 'fields') {
       $keys = array_keys(static::$$type);
       $keys = array_map(function($item) {
@@ -196,12 +210,16 @@ class Profile extends Authenticatable
       return $this->hasMany(config('backpack.profile.review_model', 'Backpack\Reviews\app\Models\Review'));
     }
 
+    public function user(){
+      return $this->belongsTo(\Profile::userModel(), 'user_id', 'id');
+    }
+
     public function referrer(){
-      return $this->belongsTo(self::class, 'referrer_id', 'id');
+      return $this->belongsTo(self::class, 'sponsor_profile_id', 'id');
     }
 
     public function referrals(){
-      return $this->hasMany(self::class, 'referrer_id', 'id');
+      return $this->hasMany(self::class, 'sponsor_profile_id', 'id');
     }
 
     /*
@@ -215,29 +233,53 @@ class Profile extends Authenticatable
     | ACCESSORS
     |--------------------------------------------------------------------------
     */
-
+    
+    /**
+     * getReferralsCountAttribute
+     *
+     * @return void
+     */
     public function getReferralsCountAttribute() {
       if($this->referrals)
         return count($this->referrals);
       else
         return 0;
     }
-
+    
+    /**
+     * getFullnameAttribute
+     *
+     * @return void
+     */
     public function getFullnameAttribute() {
       return implode(' ', [
         $this->firstname,
         $this->lastname
       ]);
     }
-
+      
     
+    public function getNameAttribute() {
+      return $this->user->name ?? null;
+    }
+    /**
+     * setAddressDetailsAttribute
+     *
+     * @param  mixed $value
+     * @return void
+     */
     public function setAddressDetailsAttribute($value) {
       $extras = $this->extras;
       $extras['address'] = $value;
       
       $this->extras = $extras;
     }
-	
+	    
+    /**
+     * getAddressDetailsAttribute
+     *
+     * @return void
+     */
     public function getAddressDetailsAttribute() {
       if(isset($this->extras['address']))
         return $this->extras['address'];
@@ -252,23 +294,16 @@ class Profile extends Authenticatable
           'zip' => ''	
         );
     }
-	
-    // public function getReferralTreeAttribute() {
-    //   $referralTree = [];
-
-    //   $referrals = $this->referrals;
-      
-    //   for($i = 0; $i < config('aimix.account.referral_levels'); $i++) {
-    //     foreach($referrals as $key => $referral) {
-    //       $referrals = $referral->referrals;
-
-    //       $referralTree
-    //     }
-
-    //   }
-
-    //   return $referralTree;
-    // }
+	    
+    /**
+     * getUniqStringAttribute
+     *
+     * @return void
+     */
+    public function getUniqStringAttribute() {
+      return implode(', ', [$this->email, $this->phone, $this->fullname]);
+    }
+    
     /*
     |--------------------------------------------------------------------------
     | MUTATORS

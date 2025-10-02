@@ -100,6 +100,12 @@ class ProfileCrudController extends CrudController
           'label' => 'Телефон',
         ]);
 
+
+        $this->crud->addField([
+          'name' => 'password',
+          'label' => 'Пароль',
+        ]);
+
         $this->crud->addField([
           'name'  => 'addresses',
           'label' => 'Адресы',

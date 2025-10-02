@@ -51,8 +51,9 @@ class ProfileController extends \App\Http\Controllers\Controller
     public function update(Request $request) {
 
       // Get user instance from AUTH guard
-      $profile = Auth::guard('profile')->user();
-      //$profile = $this->PROFILE_MODEL::find(1);
+      $user = Auth::guard('profile')->user();
+
+      $profile = $user->profile;
 
       if(!$profile)
         return response()->json('Profile not found, access denied', 403);
