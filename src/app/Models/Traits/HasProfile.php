@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 use \Backpack\Profile\app\Models\Profile;
 use \Backpack\Profile\app\Models\ReferralPartner;
-use \Backpack\Profile\app\Models\ReferralBalance;
+use \Backpack\Profile\app\Models\WalletBalance;
 use \Backpack\Profile\app\Models\SocialAccount;
 
 trait HasProfile
@@ -22,9 +22,9 @@ trait HasProfile
         return $this->hasOne(ReferralPartner::class, 'user_id');
     }
 
-    public function referralBalances(): HasMany
+    public function walletBalance(): HasOne
     {
-        return $this->hasMany(ReferralBalance::class, 'user_id');
+        return $this->hasOne(WalletBalance::class, 'user_id');
     }
 
     public function socialAccounts(): HasMany

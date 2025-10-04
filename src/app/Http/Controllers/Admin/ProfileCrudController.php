@@ -23,48 +23,53 @@ class ProfileCrudController extends CrudController
     {
         $this->crud->setModel('Backpack\Profile\app\Models\Profile');
         $this->crud->setRoute(config('backpack.base.route_prefix') . '/profile');
-        $this->crud->setEntityNameStrings('usermeta', 'usermetas');
+        $this->crud->setEntityNameStrings('профиль', 'профили');
     }
 
     protected function setupListOperation()
     {
         
+        // $this->crud->addColumn([
+        //   'name' => 'photo',
+        //   'label' => 'Фото',
+        //   'type' => 'image',
+        //   'height' => '50px',
+        //   'width'  => '50px',
+        // ]);
+
         $this->crud->addColumn([
-          'name' => 'photo',
-          'label' => 'Фото',
-          'type' => 'image',
-          'height' => '50px',
-          'width'  => '50px',
+          'name' => 'locale',
+          'label' => 'Страна',
+          'type' => 'flag'
         ]);
 
         $this->crud->addColumn([
-          'name' => 'id',
-          'label' => 'ID',
+          'name'       => 'user_id',
+          'label'      => 'User',
+          'type'       => 'user_card',
+          'user_model' => \App\Models\User::class,
         ]);
         
         $this->crud->addColumn([
-          'name' => 'email',
-          'label' => 'Email',
+          'name' => 'referral_code',
+          'label' => 'Реферальный код',
         ]);
         
         $this->crud->addColumn([
-          'name' => 'phone',
-          'label' => 'Телефон',
+          'name' => 'referrer',
+          'label' => 'Спонсор',
+          'type' => 'relationship',
+          'entity'    => 'referrer',
+          'attribute' => 'email',
+          'model'     => Backpack\Profile\app\Models\Profile::class,
         ]);
 
-        // if(config('aimix.account.enable_bonus_system')) {
-        //   $this->crud->addColumn([
-        //     'name' => 'balance',
-        //     'label' => 'Bonus balance',
-        //     'type' => 'closure',
-        //     'function' => function($entry) {
-        //         if(!count($entry->transactions->where('is_completed', 1)))
-        //           return;
-                  
-        //         return '$'.$entry->transactions->where('is_completed', 1)->sortByDesc('created_at')->first()->balance;
-        //     }
-        //   ]);
-        // }
+        $this->crud->addColumn([
+          'name' => 'balanceHtml',
+          'label' => 'Баланс',
+          'escaped' => false,
+          'limit' => 5500
+        ]);
       
     }
 

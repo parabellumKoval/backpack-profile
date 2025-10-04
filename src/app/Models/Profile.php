@@ -234,6 +234,21 @@ class Profile extends Authenticatable
     |--------------------------------------------------------------------------
     */
     
+    public function getBalanceHtmlAttribute() {
+      $wallet = optional($this->user)->walletBalance;
+      
+      if(!$wallet) return '-';
+
+      return view('crud::columns.price', [
+        'price' => $wallet->balance,
+        'currency' => \currency_label($wallet->currency)
+      ]);
+    }
+
+    public function getEmailAttribute() {
+      return optional($this->user)->email;
+    }
+
     /**
      * getReferralsCountAttribute
      *
