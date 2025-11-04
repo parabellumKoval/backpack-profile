@@ -30,17 +30,6 @@ class ProfileController extends \App\Http\Controllers\Controller
     //   return $this->update($request);
     // }
 
-    public function show(Request $request) {
-      $profile = Auth::guard('profile')->user();
-
-      if(!$profile)
-        return response()->json('Profile not found, access denied', 403);
-
-      $profile = new $this->FULL_RESOURCE($profile);
-
-      return response()->json($profile);
-    }
-
     /**
      * Update profile data from request data
      * 
@@ -92,14 +81,16 @@ class ProfileController extends \App\Http\Controllers\Controller
 
 
     public function referrals(Request $request) {
-      $profile = Auth::guard('profile')->user();
+      // $profile = Auth::guard('profile')->user();
+      $user = $request->user();
 
-      if(!$profile)
+      if($user->profile)
         return response()->json('Profile not found, access denied', 403);
 
-      $referrals = $profile->referrals()->paginate(12);
+      $referrals = $user->profile->referrals()->paginate(12);
       
-      return $this->TINY_RESOURCE::collection($referrals);
+      // return $this->TINY_RESOURCE::collection($referrals);
+      return response()->json($referrals);
     }
 
     // public function changePassword(Request $request) {

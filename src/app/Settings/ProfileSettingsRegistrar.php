@@ -59,6 +59,15 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                                 ->hint('Например: uk, ru, en. Используется при создании аккаунта.')
                                 ->tab('Общее')
                         );
+                    $page
+                        ->add(
+                            Field::make('profile.users.allow_personal_discount', 'checkbox')
+                                ->label('Включить персональные скидки')
+                                ->default(true)
+                                ->cast('bool')
+                                ->hint('Если включено при оформлении заказа будет учтена персональная скидка пользователя (если она имеется)')
+                                ->tab('Другое')
+                        );
                 })
 
                 // -------------------- Страница "Реферальная система"
@@ -150,7 +159,7 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                                 ->tab('Вывод средств')
                         )
                         ->add(
-                            Field::make('profile.withdrawal.enabled', 'number')
+                            Field::make('profile.withdrawal.minAmount', 'number')
                                 ->label('Минимальная сумма вывод (в валюте по-умолчанию)')
                                 ->cast('float')
                                 ->tab('Вывод средств')
@@ -225,7 +234,7 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
 
                             // сами уровни (проценты)
                             $page->add(
-                                Field::make("{$baseKey}.levels",'repeatable')
+                                Field::make("{$baseKey}.levels",'repeatable_pure')
                                     ->label('Уровни рефералов')
                                     ->cast('array')
                                     ->fields([

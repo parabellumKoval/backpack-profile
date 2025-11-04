@@ -2,6 +2,8 @@
 // src/app/Services/WithdrawalService.php
 namespace Backpack\Profile\app\Services;
 
+use Backpack\Profile\app\Events\WithdrawalApproved;
+use Backpack\Profile\app\Events\WithdrawalPaid;
 use Illuminate\Support\Facades\DB;
 use Backpack\Profile\app\Models\WithdrawalRequest;
 
@@ -91,16 +93,25 @@ class WithdrawalService
             $wr = DB::table('ak_withdrawal_requests')->lockForUpdate()->find($requestId);
             if (!$wr || $wr->status !== 'pending') return;
 
+            $timestamp = now();
+
             // если админ переопределяет курс — фиксируем его
             DB::table('ak_withdrawal_requests')->where('id',$requestId)->update([
                 'status'      => 'approved',
-                'approved_at' => now(),
+                'approved_at' => $timestamp,
                 'approved_by' => $adminId,
                 'fx_rate'     => $fxRate ?? $wr->fx_rate,
                 'fx_from'     => $fxFrom ?? $wr->fx_from,
                 'fx_to'       => $fxTo   ?? $wr->fx_to,
-                'updated_at'  => now(),
+                'updated_at'  => $timestamp,
             ]);
+
+            DB::afterCommit(function () use ($requestId) {
+                $model = WithdrawalRequest::query()->find($requestId);
+                if ($model) {
+                    event(new WithdrawalApproved($model));
+                }
+            });
         });
     }
 
@@ -161,12 +172,21 @@ class WithdrawalService
                 'updated_at'     => now(),
             ]);
 
+            $timestamp = now();
+
             DB::table('ak_withdrawal_requests')->where('id',$requestId)->update([
-                'status'  => 'paid',
-                'paid_at' => now(),
-                'paid_by' => $adminId,
-                'updated_at'=>now(),
+                'status'     => 'paid',
+                'paid_at'    => $timestamp,
+                'paid_by'    => $adminId,
+                'updated_at' => $timestamp,
             ]);
+
+            DB::afterCommit(function () use ($requestId) {
+                $model = WithdrawalRequest::query()->find($requestId);
+                if ($model) {
+                    event(new WithdrawalPaid($model));
+                }
+            });
         });
     }
 }

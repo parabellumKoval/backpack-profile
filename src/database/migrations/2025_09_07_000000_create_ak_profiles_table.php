@@ -28,6 +28,8 @@ return new class extends Migration {
             // рефералка (быстрый доступ, дубль из partners/или кэш)
             $t->string('referral_code', 32)->unique();
             $t->unsignedBigInteger('sponsor_profile_id')->nullable()->index();
+            // Персональная скидка
+            $t->decimal('discount_percent', 5, 2);
             // нотификации/согласия
             $t->boolean('email_marketing_opt_in')->default(false);
             $t->boolean('sms_marketing_opt_in')->default(false);

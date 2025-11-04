@@ -3,16 +3,31 @@
 // src/app/Http/Controllers/Auth/AuthController.php
 namespace Backpack\Profile\app\Http\Controllers\Auth;
 
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Backpack\Settings\Facades\Settings;
+use Backpack\Profile\app\Models\Profile;
 
 class AuthController extends Controller
 {
+    private $FULL_RESOURCE = '';
+    private $TINY_RESOURCE = '';
+    private $REFERRAL_RESOURCE = '';
+    private $PROFILE_MODEL = '';
+
+    public function __construct() {
+      $this->FULL_RESOURCE = config('backpack.profile.full_resource', 'Backpack\Profile\app\Http\Resources\ProfileFullResource');
+      $this->TINY_RESOURCE = config('backpack.profile.tiny_resource', 'Backpack\Profile\app\Http\Resources\ProfileTinyResource');
+      $this->REFERRAL_RESOURCE = config('backpack.profile.referral_resource', 'Backpack\Profile\app\Http\Resources\ProfileReferralResource');
+      $this->PROFILE_MODEL = config('backpack.profile.profile_model', 'Backpack\Profile\app\Models\Profile');
+    }
+
     protected function userModel(): string
     {
         return config('auth.providers.users.model') ?? \App\Models\User::class;
@@ -42,40 +57,7 @@ class AuthController extends Controller
         $user->password = Hash::make($data['password']);
         $user->save();
 
-        // GET REFERRER
-        // if($request->referrer_code) {
-        //     $referrer = $this->profileModel()::where('referrer_code', $request->referrer_code)->first();
-        // } 
-
-        // // TRY TO CREATE USER
-        // try {
-        //     $profile = new $profile_model;
-        //     $profile->login = $data['email'];
-        //     $profile->referrer_id = isset($referrer) && $referrer? $referrer->id: null;
-        //     $profile->referrer_code = Str::random(8);
-
-        //     foreach($data as $field_name => $field_value){
-
-        //     $field = $profile_model::$fieldsForRegistration[$field_name] ?? $profile_model::$fieldsForRegistration[$field_name.'.*'];
-            
-        //     if(isset($field['hidden']) && $field['hidden'])
-        //         continue;
-
-        //     if(isset($field['hash']) && $field['hash'])
-        //         $field_value = Hash::make($field_value);
-            
-        //     if(isset($field['store_in'])) {
-        //         $field_old_value = $profile->{$field['store_in']};
-        //         $field_old_value[$field_name] = $field_value;
-        //         $profile->{$field['store_in']} = $field_old_value;
-        //     }else {
-        //         $profile->{$field_name} = $field_value;
-        //     }
-        //     }
-
-        //     $profile->save();
-        // }
-
+        // Default event
         event(new Registered($user));
 
         // Выдать token (Bearer) — удобно для Postman/Nuxt
@@ -123,7 +105,7 @@ class AuthController extends Controller
         $token = $user->createToken('api')->plainTextToken;
 
         return response()->json([
-            'user'  => $user->only(['id','name','email','email_verified_at']),
+            'user'  => $user,
             'token' => $token,
         ]);
     }
@@ -157,5 +139,62 @@ class AuthController extends Controller
         $user->save();
 
         return response()->json(['ok' => true]);
+    }
+
+    public function changeEmail(Request $r)
+    {
+        $user = $r->user();
+
+        $data = $r->validate([
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique($user->getTable(), 'email')->ignore($user->getKey()),
+            ],
+            'password' => ['required'],
+        ]);
+
+        if (!Hash::check($data['password'], $user->password)) {
+            return response()->json(['message' => 'Current password is incorrect'], 422);
+        }
+
+        if (strcasecmp($data['email'], $user->email) === 0) {
+            return response()->json(['message' => 'Email is unchanged'], 422);
+        }
+
+        $requiresVerification = Settings::get('profile.users.require_email_verification', true)
+            && $user instanceof MustVerifyEmail;
+
+        $user->email = $data['email'];
+
+        if ($requiresVerification) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        if ($requiresVerification && method_exists($user, 'sendEmailVerificationNotification')) {
+            $user->sendEmailVerificationNotification();
+        }
+
+        return response()->json([
+            'ok'   => true,
+            'user' => $user->fresh()->only(['id', 'name', 'email', 'email_verified_at']),
+        ]);
+    }
+
+
+    public function validateReferralCode(string $code)
+    {
+        $exists = Profile::where('referral_code', $code)->exists();
+
+        return response()->json($exists);
+    }
+
+    public function getReferrals(Request $r) {
+      $referrals = $r->user()->profile->referrals()->paginate(12);
+      return $this->REFERRAL_RESOURCE::collection($referrals);
+    //   return response()->json($referrals);
     }
 }

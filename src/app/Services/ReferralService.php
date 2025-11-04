@@ -1,6 +1,10 @@
 <?php
 namespace Backpack\Profile\app\Services;
 
+use Backpack\Profile\app\Events\RewardLedgerEntryCreated;
+use Backpack\Profile\app\Models\Reward;
+use Backpack\Profile\app\Models\RewardEvent;
+use Backpack\Profile\app\Models\WalletLedger;
 use Illuminate\Support\Facades\DB;
 use Backpack\Profile\app\Services\CurrencyConverter;
 
@@ -251,18 +255,20 @@ class ReferralService
                 ])->exists();
                 if ($dupe) continue;
 
-                DB::table('ak_rewards')->insert([
-                    'event_id'             => $reversalId,
-                    'beneficiary_user_id'  => $rw->beneficiary_user_id,
-                    'level'                => $rw->level,
-                    'beneficiary_type'     => $rw->beneficiary_type,
-                    'amount'               => $neg,
-                    'currency'             => $rw->currency,
-                    'base_amount'          => $rw->base_amount,
-                    'base_currency'        => $rw->base_currency,
-                    'meta'                 => json_encode(['reversal_of'=>$rw->id,'reason'=>$reason]),
-                    'created_at'           => now(),
-                    'updated_at'           => now(),
+                $stamp = now();
+
+                $rewardId = DB::table('ak_rewards')->insertGetId([
+                    'event_id'            => $reversalId,
+                    'beneficiary_user_id' => $rw->beneficiary_user_id,
+                    'level'               => $rw->level,
+                    'beneficiary_type'    => $rw->beneficiary_type,
+                    'amount'              => $neg,
+                    'currency'            => $rw->currency,
+                    'base_amount'         => $rw->base_amount,
+                    'base_currency'       => $rw->base_currency,
+                    'meta'                => json_encode(['reversal_of' => $rw->id, 'reason' => $reason]),
+                    'created_at'          => $stamp,
+                    'updated_at'          => $stamp,
                 ]);
 
                 // баланс + ledger
@@ -271,17 +277,27 @@ class ReferralService
                 ->lockForUpdate()
                 ->update(['balance'=>DB::raw("balance + ".(float)$neg),'updated_at'=>now()]);
 
-                DB::table('ak_wallet_ledger')->insert([
+                $ledgerId = DB::table('ak_wallet_ledger')->insertGetId([
                     'user_id'        => $rw->beneficiary_user_id,
                     'type'           => 'debit',
                     'amount'         => $neg,
                     'currency'       => $rw->currency,
                     'reference_type' => 'reversal',
-                    'reference_id'   => (string)$reversalId,
-                    'meta'           => json_encode(['reversal_of_reward_id'=>$rw->id,'reason'=>$reason]),
-                    'created_at'     => now(),
-                    'updated_at'     => now(),
+                    'reference_id'   => (string) $reversalId,
+                    'meta'           => json_encode(['reversal_of_reward_id' => $rw->id, 'reason' => $reason]),
+                    'created_at'     => $stamp,
+                    'updated_at'     => $stamp,
                 ]);
+
+                DB::afterCommit(function () use ($reversalId, $rewardId, $ledgerId) {
+                    $eventModel = RewardEvent::query()->find($reversalId);
+                    $rewardModel = Reward::query()->find($rewardId);
+                    $ledgerModel = WalletLedger::query()->find($ledgerId);
+
+                    if ($eventModel && $rewardModel && $ledgerModel) {
+                        event(new RewardLedgerEntryCreated($eventModel, $rewardModel, $ledgerModel));
+                    }
+                });
             }
 
             DB::table('ak_reward_events')->where('id',$reversalId)
@@ -322,18 +338,20 @@ class ReferralService
         ])->exists();
         if ($exists) return;
 
-        DB::table('ak_rewards')->insert([
-            'event_id'=>$eventId,
-            'beneficiary_user_id'=>$userId,
-            'level'=>$level,
-            'beneficiary_type'=>$bType,
-            'amount'=>$amount,
-            'currency'=>$currency,
-            'base_amount'=>$baseAmount,
-            'base_currency'=>$baseCurrency,
-            'meta'=>json_encode($meta),
-            'created_at'=>now(),
-            'updated_at'=>now(),
+        $stamp = now();
+
+        $rewardId = DB::table('ak_rewards')->insertGetId([
+            'event_id'            => $eventId,
+            'beneficiary_user_id' => $userId,
+            'level'               => $level,
+            'beneficiary_type'    => $bType,
+            'amount'              => $amount,
+            'currency'            => $currency,
+            'base_amount'         => $baseAmount,
+            'base_currency'       => $baseCurrency,
+            'meta'                => json_encode($meta),
+            'created_at'          => $stamp,
+            'updated_at'          => $stamp,
         ]);
 
         // апдейт баланса
@@ -351,16 +369,26 @@ class ReferralService
         }
 
         // ledger: credit
-        DB::table('ak_wallet_ledger')->insert([
-            'user_id'=>$userId,
-            'type'=>'credit',
-            'amount'=>$amount,
-            'currency'=>$currency,
-            'reference_type'=>'referral_reward',
-            'reference_id'=>(string)$eventId,
-            'meta'=>json_encode(['level'=>$level,'beneficiary_type'=>$bType]),
-            'created_at'=>now(),
-            'updated_at'=>now(),
+        $ledgerId = DB::table('ak_wallet_ledger')->insertGetId([
+            'user_id'        => $userId,
+            'type'           => 'credit',
+            'amount'         => $amount,
+            'currency'       => $currency,
+            'reference_type' => 'referral_reward',
+            'reference_id'   => (string) $eventId,
+            'meta'           => json_encode(['level' => $level, 'beneficiary_type' => $bType]),
+            'created_at'     => $stamp,
+            'updated_at'     => $stamp,
         ]);
+
+        DB::afterCommit(function () use ($eventId, $rewardId, $ledgerId) {
+            $eventModel = RewardEvent::query()->find($eventId);
+            $rewardModel = Reward::query()->find($rewardId);
+            $ledgerModel = WalletLedger::query()->find($ledgerId);
+
+            if ($eventModel && $rewardModel && $ledgerModel) {
+                event(new RewardLedgerEntryCreated($eventModel, $rewardModel, $ledgerModel));
+            }
+        });
     }
 }

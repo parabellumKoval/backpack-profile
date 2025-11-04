@@ -17,7 +17,8 @@ return [
 
   'tiny_resource' => 'Backpack\Profile\app\Http\Resources\ProfileTinyResource',
 
-  'reset_password_redirect' => env('FRONT_URL') . '/new-password',
+  'reset_password_redirect' => env('FRONT_URL') . 'new-password',
+  'email_verify_redirect' => env('FRONT_URL'),
 
   //
   'private_middlewares' => [
@@ -39,8 +40,12 @@ return [
   'points' => [
     'enabled' => true,
     'key' => 'point',
-    'name' => 'Баллы',
+    'name' => 'VIVA',
     'base' => 'CZK'
+  ],
+
+  'bonus' => [
+    'account_service' => \Backpack\Profile\app\Services\BonusAccountService::class,
   ],
 
   'currencies' => [

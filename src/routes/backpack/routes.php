@@ -9,7 +9,6 @@ Route::group([
     'prefix'     => config('backpack.base.route_prefix', 'admin'),
 ], function () { 
     Route::crud('profile', 'ProfileCrudController');
-    Route::crud('referrals', 'ReferralsCrudController');
     Route::crud('withdrawals', 'WithdrawalRequestCrudController');
 
 
@@ -30,4 +29,3 @@ Route::group([
     Route::post('withdrawals/{id}/reject', 'WithdrawalRequestCrudController@reject');
     Route::post('withdrawals/{id}/paid', 'WithdrawalRequestCrudController@paid');
 });
-

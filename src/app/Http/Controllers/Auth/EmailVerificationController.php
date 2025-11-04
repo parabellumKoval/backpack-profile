@@ -6,7 +6,6 @@ namespace Backpack\Profile\app\Http\Controllers\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Auth\Events\Verified;
-use Illuminate\Support\Facades\URL;
 
 class EmailVerificationController extends Controller
 {
@@ -36,9 +35,8 @@ class EmailVerificationController extends Controller
         $user->markEmailAsVerified();
         event(new Verified($user));
 
-        // Можно редиректнуть на Nuxt-роут: /auth/verified
-        if ($redirect = config('profile.email_verified_redirect')) {
-            return redirect()->to($redirect);
+        if ($redirectUrl = $this->buildVerificationRedirectUrl($r, $user, (string) $hash)) {
+            return redirect()->away($redirectUrl);
         }
 
         return response()->json(['ok' => true]);
@@ -60,5 +58,30 @@ class EmailVerificationController extends Controller
 
         // Чтобы не раскрывать, существует ли email, всегда отвечаем одинаково.
         return response()->json(['ok' => true]);
+    }
+
+    protected function buildVerificationRedirectUrl(Request $request, $user, string $hash): ?string
+    {
+        $baseUrl = \Settings::get('profile.email_verify_redirect', config('profile.email_verify_redirect'));
+
+        if (empty($baseUrl)) {
+            return null;
+        }
+
+        $params = array_filter([
+            'id' => $user->getKey(),
+            'hash' => $hash,
+            'expires' => $request->query('expires'),
+            'signature' => $request->query('signature'),
+            'verified' => 1,
+        ], static fn ($value) => ! is_null($value) && $value !== '');
+
+        if (empty($params)) {
+            return $baseUrl;
+        }
+
+        $separator = str_contains($baseUrl, '?') ? '&' : '?';
+
+        return $baseUrl . $separator . http_build_query($params);
     }
 }

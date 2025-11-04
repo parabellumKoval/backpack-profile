@@ -41,4 +41,14 @@ class PasswordResetController extends Controller
             ? response()->json(['ok' => true])
             : response()->json(['message' => __($status)], 422);
     }
+
+
+    public function resetPasswordToken(Request $request, $token) {
+
+        $input = $request->only('email');
+
+        $url = \Settings::get('profile.reset_password_redirect', '/') . '?newpassword=true&t=' . $token . '&email=' . $input['email'];
+
+        return redirect($url);
+    }
 }

@@ -22,7 +22,7 @@ class WithdrawalController extends Controller
     {
         $data = $r->validate([
             'amount'          => ['required','numeric','min:0.01'],
-            'payout_currency' => ['required','string','max:16'], // ← теперь это валюта, в которой хочет получить пользователь
+            'payout_currency' => ['required','string','max:16'],
             'method'          => ['nullable','string','max:64'],
             'details'         => ['array'],
         ]);

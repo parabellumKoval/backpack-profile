@@ -112,8 +112,7 @@ Backpack Settings extender (`ProfileSettingsRegistrar`) mirrors these options in
 
 Once the service provider boots, the following routes are available under the Backpack prefix (default `/admin`):
 
-- `profile` CRUD (`ProfileCrudController`): manage user profiles, inspect balances, sponsors, and contact data.
-- `referrals` list (`ReferralsCrudController`): list only users with downline referrals, with expandable detail rows.
+- `profile` CRUD (`ProfileCrudController`): manage user profiles, inspect balances, sponsors, contact data, and explore the full referral tree via the details row.
 - `rewards` list (`RewardCrudController`): read-only grid of issued rewards, filters by beneficiary type, amount, currency.
 - `reward-events` list (`RewardEventCrudController`): inspect trigger executions, re-process or create reversal events.
 - `wallet-ledger` list (`WalletLedgerCrudController`): journal of wallet movements.

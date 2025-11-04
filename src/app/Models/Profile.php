@@ -6,6 +6,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Backpack\CRUD\app\Models\Traits\CrudTrait;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 
 // FACTORY
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -35,7 +38,23 @@ class Profile extends Authenticatable
 
     protected $casts = [
       'extras' => 'array',
-      'addresses' => 'array'
+      'addresses' => 'array',
+      'meta' => 'array',
+      'discount_percent' => 'float',
+    ];
+
+    public const ADDRESS_KEYS = [
+        'first_name',
+        'last_name',
+        'company',
+        'email',
+        'phone',
+        'address_1',
+        'address_2',
+        'postcode',
+        'city',
+        'state',
+        'country',
     ];
 
     public static $fields = [
@@ -113,22 +132,39 @@ class Profile extends Authenticatable
     | FUNCTIONS
     |--------------------------------------------------------------------------
     */
-    public function toArray() {
-      return [
-        'id' => $this->id,
-        'name' => $this->fullname,
-        'email' => $this->email,
-        'photo' => $this->photo? url($this->photo): null,
-      ];
+    public function toArray(): array
+    {
+        $avatar = $this->avatarUrl();
+
+        return [
+            'id' => $this->id,
+            'name' => $this->fullname,
+            'first_name' => $this->first_name ?? $this->firstname,
+            'last_name' => $this->last_name ?? $this->lastname,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'avatar' => $avatar,
+            'avatar_url' => $avatar,
+            'country_code' => $this->country_code,
+            'locale' => $this->locale,
+            'timezone' => $this->timezone,
+            'referral_code' => $this->referral_code,
+            'discount_percent' => $this->discount_percent,
+            'personal_discount_percent' => $this->personal_discount_percent,
+            'billing' => static::fillAddress($this->getMetaSection('billing')),
+            'shipping' => static::fillAddress($this->getMetaSection('shipping')),
+            'meta' => $this->metaWithoutOther(),
+        ];
     }
 
-    public function toOrderArray() {
-      return [
-        'firstname' => $this->firstname,
-        'lastname' => $this->lastname,
-        'email' => $this->email,
-        'phone' => $this->phone
-      ];      
+    public function toOrderArray(): array
+    {
+        return [
+            'firstname' => $this->first_name ?? $this->firstname,
+            'lastname' => $this->last_name ?? $this->lastname,
+            'email' => $this->email,
+            'phone' => $this->phone,
+        ];
     }
     /**
      * Create a new factory instance for the model.
@@ -138,6 +174,22 @@ class Profile extends Authenticatable
     protected static function newFactory()
     {
       return ProfileFactory::new();
+    }
+
+    protected function discountPercent(): Attribute
+    {
+      return Attribute::make(
+        get: fn ($value) => $value !== null ? (float) $value : 0.0,
+      );
+    }
+
+    protected function personalDiscountPercent(): Attribute
+    {
+      return Attribute::make(
+        get: fn ($value, array $attributes) => isset($attributes['discount_percent'])
+          ? (float) $attributes['discount_percent']
+          : 0.0,
+      );
     }
 
     /** 
@@ -234,6 +286,10 @@ class Profile extends Authenticatable
     |--------------------------------------------------------------------------
     */
     
+    public function getWalletBalanceAttribute() {
+      return optional($this->user)->walletBalance;
+    }
+
     public function getBalanceHtmlAttribute() {
       $wallet = optional($this->user)->walletBalance;
       
@@ -247,6 +303,30 @@ class Profile extends Authenticatable
 
     public function getEmailAttribute() {
       return optional($this->user)->email;
+    }
+
+    public function getPhotoAttribute($value)
+    {
+        if ($value) {
+            return $value;
+        }
+
+        return $this->attributes['avatar_url'] ?? null;
+    }
+
+    public function avatarUrl(): ?string
+    {
+        $value = $this->attributes['avatar_url'] ?? $this->attributes['photo'] ?? null;
+
+        if (!$value) {
+            return null;
+        }
+
+        if (Str::startsWith($value, ['http://', 'https://', '//'])) {
+            return $value;
+        }
+
+        return url($value);
     }
 
     /**
@@ -266,11 +346,42 @@ class Profile extends Authenticatable
      *
      * @return void
      */
-    public function getFullnameAttribute() {
-      return implode(' ', [
-        $this->firstname,
-        $this->lastname
-      ]);
+    public function getFullnameAttribute(): ?string
+    {
+        $explicit = $this->attributes['full_name'] ?? null;
+        if (is_string($explicit) && trim($explicit) !== '') {
+            return trim($explicit);
+        }
+
+        $first = $this->attributes['first_name'] ?? $this->attributes['firstname'] ?? null;
+        $last = $this->attributes['last_name'] ?? $this->attributes['lastname'] ?? null;
+        $name = trim(collect([$first, $last])->filter()->implode(' '));
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return $this->user->name ?? null;
+    }
+
+    public function getFirstnameAttribute(): ?string
+    {
+        return $this->attributes['first_name'] ?? null;
+    }
+
+    public function setFirstnameAttribute($value): void
+    {
+        $this->attributes['first_name'] = $value;
+    }
+
+    public function getLastnameAttribute(): ?string
+    {
+        return $this->attributes['last_name'] ?? null;
+    }
+
+    public function setLastnameAttribute($value): void
+    {
+        $this->attributes['last_name'] = $value;
     }
       
     
@@ -317,6 +428,121 @@ class Profile extends Authenticatable
      */
     public function getUniqStringAttribute() {
       return implode(', ', [$this->email, $this->phone, $this->fullname]);
+    }
+
+    public function getBillingAttribute($value = null): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        return $this->getMetaSection('billing');
+    }
+
+    public function setBillingAttribute($value): void
+    {
+        $normalized = static::normalizeAddress(is_array($value) ? $value : []);
+        $this->setMetaSection('billing', $normalized);
+    }
+
+    public function getShippingAttribute($value = null): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        return $this->getMetaSection('shipping');
+    }
+
+    public function setShippingAttribute($value): void
+    {
+        $normalized = static::normalizeAddress(is_array($value) ? $value : []);
+        $this->setMetaSection('shipping', $normalized);
+    }
+
+    public function getMetaSection(string $section, ?array $default = []): array
+    {
+        $meta = $this->meta ?? [];
+        if (!is_array($meta)) {
+            return $default ?? [];
+        }
+
+        $value = Arr::get($meta, $section, $default ?? []);
+
+        return is_array($value) ? $value : [];
+    }
+
+    public function getMetaOther(): array
+    {
+        return $this->getMetaSection('other');
+    }
+
+    public function metaWithoutOther(): array
+    {
+        $meta = $this->meta ?? [];
+
+        return is_array($meta) ? Arr::except($meta, ['other']) : [];
+    }
+
+    public function mergeMeta(array $values): void
+    {
+        $meta = $this->meta ?? [];
+        $meta = is_array($meta) ? $meta : [];
+        $meta = array_replace_recursive($meta, $values);
+
+        $this->meta = $meta ?: null;
+    }
+
+    protected function setMetaSection(string $section, array $data): void
+    {
+        $meta = $this->meta ?? [];
+        $meta = is_array($meta) ? $meta : [];
+
+        if ($data === []) {
+            unset($meta[$section]);
+        } else {
+            $meta[$section] = $data;
+        }
+
+        $this->meta = $meta ?: null;
+    }
+
+    protected static function normalizeAddress(?array $address): array
+    {
+        if (!is_array($address)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach (self::ADDRESS_KEYS as $key) {
+            $value = Arr::get($address, $key);
+
+            if (is_string($value)) {
+                $value = trim($value);
+            }
+
+            if ($value === '' || $value === null) {
+                continue;
+            }
+
+            $normalized[$key] = $value;
+        }
+
+        return $normalized;
+    }
+
+    public static function fillAddress(?array $address): array
+    {
+        $address = is_array($address) ? $address : [];
+        $filled = [];
+
+        foreach (self::ADDRESS_KEYS as $key) {
+            $value = Arr::get($address, $key);
+            $filled[$key] = $value === null ? '' : (string) $value;
+        }
+
+        return $filled;
     }
     
     /*

@@ -6,7 +6,11 @@ use Backpack\Profile\app\Http\Controllers\Auth\PasswordResetController;
 use Backpack\Profile\app\Http\Controllers\Auth\EmailVerificationController;
 use Backpack\Profile\app\Http\Controllers\Auth\OAuthController;
 
-Route::prefix('api/auth')->middleware(['api', \Backpack\Profile\app\Http\Middleware\ForceJsonResponse::class])->group(function () {
+Route::prefix('api/auth')->middleware([
+        'api', 
+        \Backpack\Profile\app\Http\Middleware\ForceJsonResponse::class, 
+        \Backpack\Profile\app\Http\Middleware\AddXReferralHeadersToRequest::class
+    ])->group(function () {
     // CSRF cookie для cookie-based SPA (если понадобится)
     // /sanctum/csrf-cookie уже есть в Sanctum
 
@@ -18,8 +22,11 @@ Route::prefix('api/auth')->middleware(['api', \Backpack\Profile\app\Http\Middlew
 
     // Смена пароля (аутентифицированный пользователь)
     Route::post('password/change', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
+    // Смена email (аутентифицированный пользователь)
+    Route::post('email/change', [AuthController::class, 'changeEmail'])->middleware('auth:sanctum');
 
     // Восстановление пароля по email
+    Route::get('reset-password/{token}', [PasswordResetController::class, 'resetPasswordToken'])->middleware('guest')->name('password.reset');
     Route::post('password/forgot', [PasswordResetController::class, 'sendResetLink']);
     Route::post('password/reset',  [PasswordResetController::class, 'reset']);
 
@@ -37,4 +44,8 @@ Route::prefix('api/auth')->middleware(['api', \Backpack\Profile\app\Http\Middlew
     // Socialite (Google/Facebook)
     Route::get('oauth/{provider}/url', [OAuthController::class, 'getRedirectUrl']); // вернёт URL провайдера
     Route::get('oauth/{provider}/callback', [OAuthController::class, 'callback']);
+
+    // Проверка реферального кода
+    Route::get('referral/validate/{code}', [AuthController::class, 'validateReferralCode']);
+    Route::get('referral/all', [AuthController::class, 'getReferrals'])->middleware('auth:sanctum');
 });

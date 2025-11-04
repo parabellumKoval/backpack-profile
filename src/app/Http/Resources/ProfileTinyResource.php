@@ -12,15 +12,20 @@ class ProfileTinyResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array
      */
-    public function toArray($request)
+    public function toArray($request): array
     {
-      return [
-        'id' => $this->id,
-        'fullname' => $this->fullname,
-        'email' => $this->email,
-        'photo' => $this->photo? url($this->photo): null,
-        'referrals' => $this->referrals? self::collection($this->referrals): null,
-        'created_at' => $this->created_at
-      ];
+        $avatar = $this->avatarUrl();
+
+        return [
+            'id' => $this->id,
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'full_name' => $this->fullname,
+            'email' => $this->email,
+            'avatar' => $avatar,
+            'avatar_url' => $avatar,
+            'referral_code' => $this->referral_code,
+            'created_at' => optional($this->created_at)->toIso8601String(),
+        ];
     }
 }

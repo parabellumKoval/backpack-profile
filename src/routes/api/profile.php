@@ -25,7 +25,7 @@ Route::prefix('api/profile')->middleware([\Backpack\Profile\app\Http\Middleware\
 
   Route::post('/update', 'update')->middleware(['auth:sanctum']);
 
-  Route::get('/referrals', 'referrals')->middleware(['auth:profile']);
+  Route::get('/referrals', 'referrals')->middleware(['api', 'auth:sanctum']);
 });
 
 

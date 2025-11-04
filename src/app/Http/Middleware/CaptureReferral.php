@@ -1,6 +1,5 @@
 <?php
 
-// src/app/Http/Middleware/CaptureReferral.php
 namespace Backpack\Profile\app\Http\Middleware;
 
 use Closure;

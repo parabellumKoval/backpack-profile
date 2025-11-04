@@ -5,7 +5,7 @@ namespace Backpack\Profile\app\Http\Resources;
 use Backpack\Profile\app\Models\Profile as ProfileModel;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ProfileFullResource extends JsonResource
+class ProfileReferralResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -33,11 +33,8 @@ class ProfileFullResource extends JsonResource
             'locale' => $profile->locale,
             'timezone' => $profile->timezone,
             'referral_code' => $profile->referral_code,
-            'discount_percent' => $profile->discount_percent,
-            'personal_discount_percent' => $profile->personal_discount_percent,
-            'billing' => ProfileModel::fillAddress($profile->getMetaSection('billing')),
-            'shipping' => ProfileModel::fillAddress($profile->getMetaSection('shipping')),
-            'meta' => $profile->metaWithoutOther(),
+            'referrals' => $profile->referrals? self::collection($profile->referrals): [],
+            'balance' => $profile->walletBalance,
             'created_at' => optional($profile->created_at)->toIso8601String(),
             'created_at_human' => optional($profile->created_at)->format('d.m.Y'),
         ];

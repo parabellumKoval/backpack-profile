@@ -4,9 +4,8 @@ namespace Backpack\Profile;
 
 use Illuminate\Foundation\AliasLoader;
 use Illuminate\Support\Facades\View;
-// use Backpack\Profile\app\Providers\EventServiceProvider;
-// use Backpack\Profile\app\Observers\ProfileObserver;
 use Backpack\Profile\app\Models\Profile;
+use Backpack\Profile\app\Contracts\BonusAccount;
 
 class ServiceProvider extends \Illuminate\Support\ServiceProvider
 {
@@ -30,9 +29,6 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
             __DIR__.'/resources/views/vendor/backpack/crud',
         ]);
 
-        // Bonus Service registration
-        // $this->app->singleton(\Backpack\Profile\app\Services\BonusService::class);
-
         // Currency names
         $this->app->singleton(\Backpack\Profile\app\Contracts\CurrencyNameResolver::class, \Backpack\Profile\app\Services\CurrencyNameResolver::class);
 
@@ -48,10 +44,10 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
         // Routes
         $this->loadRoutesFrom(__DIR__.'/routes/backpack/routes.php');
         $this->loadRoutesFrom(__DIR__.'/routes/backpack/profile_dashboard.php');
-        // $this->loadRoutesFrom(__DIR__.'/routes/backpack/withdrawals.php');
 
         $this->loadRoutesFrom(__DIR__.'/routes/api/profile.php');
         $this->loadRoutesFrom(__DIR__.'/routes/api/withdrawals.php');
+        $this->loadRoutesFrom(__DIR__.'/routes/api/common.php');
 
         $this->loadRoutesFrom(__DIR__.'/routes/web/auth.php');
 
@@ -70,22 +66,10 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
 
         $this->publishes([
             __DIR__.'/routes/backpack/routes.php' => resource_path('/routes/backpack/profile/routes.php'),
-            // __DIR__.'/routes/backpack/withdrawals.php' => resource_path('/routes/backpack/profile/withdrawals.php'),
             __DIR__.'/routes/api/profile.php' => resource_path('/routes/backpack/profile/api.php'),
             __DIR__.'/routes/web/auth.php' => resource_path('/routes/backpack/profile/auth.php'),
         ], 'routes');
-        
-        // View::composer('*', function ($view) {
-        //     $user = \Auth::user();
-        //     $transaction = $user? $user->transactions()->where('is_completed', 1)->orderBy('created_at', 'desc')->first(): null;
-        //     $balance = $transaction? $transaction->balance: 0;
-            
-        //     $referrer = Usermeta::where('referral_code', request()->get('ref'))->where('referral_code', '!=', null)->first();
-        //     $ref_id = $referrer ? $referrer->id : null;
-        //     session()->put('ref_id', $ref_id);
-
-        //     $view->with('user', $user)->with('ref_id', $ref_id)->with('balance', $balance);
-        // });
+    
     }
 
     public function register()
@@ -124,6 +108,11 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
 
         // Facades
         $this->registerFacadeAlias();
+
+        $this->app->singleton(
+            BonusAccount::class,
+            \Backpack\Profile\app\Services\BonusAccountService::class
+        );
     }
 
     protected function registerFacadeAlias()
