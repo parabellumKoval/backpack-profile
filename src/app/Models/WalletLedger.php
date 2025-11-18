@@ -3,12 +3,13 @@
 namespace Backpack\Profile\app\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Backpack\CRUD\app\Models\Traits\CrudTrait;
 
 class WalletLedger extends Model
 {
-    use CrudTrait;
+    use CrudTrait, HasFactory;
 
     protected $table = 'ak_wallet_ledger';
 
@@ -35,6 +36,26 @@ class WalletLedger extends Model
     public function scopeForReference($q, string $type, string|int $id)
     {
         return $q->where('reference_type', $type)->where('reference_id', (string)$id);
+    }
+
+    public function scopeForUser($q, int $userId)
+    {
+        return $q->where('user_id', $userId);
+    }
+
+    public function scopeOfType($q, string $type)
+    {
+        return $q->where('type', $type);
+    }
+
+    public function scopeOfReferenceType($q, string $referenceType)
+    {
+        return $q->where('reference_type', $referenceType);
+    }
+
+    public function scopeRecent($q)
+    {
+        return $q->orderBy('created_at', 'desc');
     }
 
      // Человекочитаемая метка типа (через перевод)

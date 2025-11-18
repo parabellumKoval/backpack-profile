@@ -26,10 +26,9 @@ Route::prefix('api/profile')->middleware([\Backpack\Profile\app\Http\Middleware\
   Route::post('/update', 'update')->middleware(['auth:sanctum']);
 
   Route::get('/referrals', 'referrals')->middleware(['api', 'auth:sanctum']);
+  
+  Route::get('/wallet/ledger', 'walletLedger')->middleware(['api', 'auth:sanctum']);
+  
 });
-
-
-// Route::post('api/profile/change-password', [ResetPasswordController::class, 'change_password'])
-//   ->middleware(['auth:profile']);
 
 
