@@ -12,4 +12,5 @@ Route::group([
     ),
 ], function () {
     Route::get('profile-dashboard', [ProfileDashboardController::class, 'index'])->name('bp.profile.dashboard');
+    Route::get('profile-dashboard/top-users', [ProfileDashboardController::class, 'topUsers'])->name('bp.profile.dashboard.top-users');
 });

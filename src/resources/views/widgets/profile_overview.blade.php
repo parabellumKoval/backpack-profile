@@ -3,6 +3,7 @@
 
     $summaryCards    = $data['summaryCards'] ?? [];
     $topUsers        = collect($data['topUsers'] ?? []);
+    $topUsersSort    = $data['topUsersSort'] ?? 'created';
     $referralLeaders = $data['referralLeaders'] ?? collect();
     $rewardStats     = $data['rewardStats'] ?? ['perCurrency' => collect(), 'latestRewards' => collect()];
     $withdrawals     = $data['withdrawals'] ?? collect();
@@ -42,7 +43,7 @@
 
     <div class="row">
         <div class="col-xl-10 mb-4">
-            @include('profile-backpack::widgets.profile.users_referrals', ['topUsers' => $topUsers])
+            @include('profile-backpack::widgets.profile.users_referrals', ['topUsers' => $topUsers, 'activeSort' => $topUsersSort])
         </div>
         <div class="col-xl-2 mb-4">
             @include('profile-backpack::widgets.profile.referral_leaders', ['leaders' => $referralLeaders])

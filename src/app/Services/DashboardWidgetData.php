@@ -24,7 +24,10 @@ class DashboardWidgetData
             ];
         });
 
-        $data['topUsers'] = $this->topUsers($ttl);
+        $activeTopUsersSort = $this->resolveTopUsersSort();
+
+        $data['topUsers'] = $this->topUsers($activeTopUsersSort, $ttl);
+        $data['topUsersSort'] = $activeTopUsersSort;
 
         return $data;
     }
@@ -137,9 +140,9 @@ class DashboardWidgetData
         ];
     }
 
-    protected function topUsers($ttl = null)
+    public function topUsers(?string $sort = null, $ttl = null)
     {
-        $sort = $this->resolveTopUsersSort();
+        $sort = $this->resolveTopUsersSort($sort);
         $ttl = $ttl ?? now()->addMinutes($this->cacheMinutes);
         $cacheKey = "bp:dashboard:profile-widgets:v4:top-users:{$sort}";
 
@@ -155,9 +158,9 @@ class DashboardWidgetData
         });
     }
 
-    protected function resolveTopUsersSort(): string
+    public function resolveTopUsersSort(?string $sort = null): string
     {
-        $sort = request()->query('top_users_sort');
+        $sort = $sort ?? request()->query('top_users_sort');
         $allowed = ['created', 'referrals', 'orders'];
 
         return in_array($sort, $allowed, true) ? $sort : 'created';
