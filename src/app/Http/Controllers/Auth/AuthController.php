@@ -3,6 +3,7 @@
 // src/app/Http/Controllers/Auth/AuthController.php
 namespace Backpack\Profile\app\Http\Controllers\Auth;
 
+use Backpack\Profile\app\Services\WpPasswordChecker;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -21,11 +22,15 @@ class AuthController extends Controller
     private $REFERRAL_RESOURCE = '';
     private $PROFILE_MODEL = '';
 
-    public function __construct() {
+    protected WpPasswordChecker $wpPasswords;
+
+    public function __construct(WpPasswordChecker $wpPasswords) {
       $this->FULL_RESOURCE = config('backpack.profile.full_resource', 'Backpack\Profile\app\Http\Resources\ProfileFullResource');
       $this->TINY_RESOURCE = config('backpack.profile.tiny_resource', 'Backpack\Profile\app\Http\Resources\ProfileTinyResource');
       $this->REFERRAL_RESOURCE = config('backpack.profile.referral_resource', 'Backpack\Profile\app\Http\Resources\ProfileReferralResource');
       $this->PROFILE_MODEL = config('backpack.profile.profile_model', 'Backpack\Profile\app\Models\Profile');
+
+      $this->wpPasswords = $wpPasswords;
     }
 
     protected function userModel(): string
@@ -84,9 +89,37 @@ class AuthController extends Controller
         $userClass = $this->userModel();
         $user = $userClass::where('email', $r->email)->first();
 
-        if (!$user || !Hash::check($r->password, $user->password)) {
+        // if (!$user || !Hash::check($r->password, $user->password)) {
+        //     return response()->json(['message' => 'Invalid credentials'], 401);
+        // }
+
+        // --- НАЧАЛО -- С ПРОВЕРКОЙ WP пароля
+        if (!$user) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
+
+        $passwordOk = false;
+        $viaWp      = false;
+
+        // 1) пробуем обычный Laravel-хэш
+        if (Hash::check($r->password, $user->password)) {
+            $passwordOk = true;                           
+        } elseif ($this->wpPasswords->check($r->password, $user->password)) {
+            // 2) если не прошёл Laravel, пробуем как WP-хэш
+            $passwordOk = true;                           
+            $viaWp      = true;                           
+        }
+
+        if (! $passwordOk) {                              
+            return response()->json(['message' => 'Invalid credentials'], 401);
+        }
+
+        // если успешно залогинились через WP-хэш — перехэшируем в Laravel
+        if ($viaWp) {                                     
+            $user->password = Hash::make($r->password);   
+            $user->save();                                
+        }
+        // --- КОНЕЦ -- С ПРОВЕРКОЙ WP пароля
 
 
         if (\Settings::get('profile.users.require_email_verification', true)) {
@@ -131,9 +164,26 @@ class AuthController extends Controller
 
         $user = $r->user();
 
-        if (!Hash::check($r->current_password, $user->password)) {
+        // if (!Hash::check($r->current_password, $user->password)) {
+        //     return response()->json(['message' => 'Current password is incorrect'], 422);
+        // }
+
+        // --- НАЧАЛО изменённого блока проверки текущего пароля ----------- //
+        $currentOk = false;
+
+        // 1) пробуем как Laravel-хэш
+        if (Hash::check($r->current_password, $user->password)) {
+            $currentOk = true;                                   
+        }
+        // 2) если не совпало — пробуем как WP-хэш
+        elseif ($this->wpPasswords->check($r->current_password, $user->password)) {
+            $currentOk = true;                                                   
+        }
+
+        if (! $currentOk) {                                                     
             return response()->json(['message' => 'Current password is incorrect'], 422);
         }
+        // --- КОНЕЦ изменённого блока проверки текущего пароля ------------- //
 
         $user->password = Hash::make($r->password);
         $user->save();

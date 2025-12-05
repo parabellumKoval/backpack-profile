@@ -5,6 +5,7 @@ namespace Backpack\Profile\app\Http\Controllers\Api;
 use Illuminate\Http\Request;
 use App\Rules\EquallyPassword;
 use \Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 
@@ -52,15 +53,21 @@ class ProfileController extends \App\Http\Controllers\Controller
       if(!$profile)
         return response()->json('Profile not found, access denied', 403);
 
-      // Get only allowed fields
-      $data = $request->only($this->PROFILE_MODEL::getFieldKeys());
+      $fieldKeys = $this->PROFILE_MODEL::getFieldKeys();
+      $rules = array_merge(
+        $this->prepareProfileRules($request),
+        $this->addressValidationRules('billing'),
+        $this->addressValidationRules('shipping')
+      );
 
-      // Apply validation rules to data
-      $validator = Validator::make($data, $this->PROFILE_MODEL::getRules());
+      $validator = Validator::make($request->all(), $rules);
   
       if ($validator->fails()) {
         return response()->json($validator->errors(), 400);
       }
+
+      $payload = $validator->validated();
+      $data = array_intersect_key($payload, array_flip($fieldKeys));
 
       try {
         foreach($data as $field_name => $field_value){
@@ -76,12 +83,77 @@ class ProfileController extends \App\Http\Controllers\Controller
           }
         }
 
+        if ($request->exists('billing')) {
+          $profile->billing = $this->sanitizeAddress($payload['billing'] ?? []);
+        }
+
+        if ($request->exists('shipping')) {
+          $profile->shipping = $this->sanitizeAddress($payload['shipping'] ?? []);
+        }
+
         $profile->save();
       }catch(\Exception $e){
         return response()->json($e->getMessage(), 400);
       }
 
       return response()->json($profile);
+    }
+
+    protected function prepareProfileRules(Request $request): array
+    {
+      $rules = [];
+      $payload = $request->all();
+
+      foreach ($this->PROFILE_MODEL::getRules() as $field => $rule) {
+        if (Arr::has($payload, $field)) {
+          $rules[$field] = $rule;
+        }
+      }
+
+      return $rules;
+    }
+
+    protected function addressValidationRules(string $prefix): array
+    {
+      $rules = [
+        $prefix => ['nullable', 'array'],
+      ];
+
+      foreach (Profile::ADDRESS_KEYS as $key) {
+        $fieldRules = ['nullable', 'string', 'max:255'];
+
+        if ($key === 'email') {
+          $fieldRules = ['nullable', 'email', 'max:255'];
+        }
+
+        $rules["{$prefix}.{$key}"] = $fieldRules;
+      }
+
+      return $rules;
+    }
+
+    protected function sanitizeAddress(?array $address): array
+    {
+      $address = is_array($address) ? $address : [];
+      $normalized = [];
+
+      foreach (Profile::ADDRESS_KEYS as $key) {
+        $value = $address[$key] ?? null;
+
+        if (!is_string($value)) {
+          continue;
+        }
+
+        $value = trim($value);
+
+        if ($value === '') {
+          continue;
+        }
+
+        $normalized[$key] = $value;
+      }
+
+      return $normalized;
     }
 
 
@@ -315,6 +387,8 @@ class ProfileController extends \App\Http\Controllers\Controller
     private function getTriggerLabel(?string $trigger): string
     {
         $labels = [
+            'review.published.text' => 'Опубликованный текстовый отзыв',
+            'review.published.video' => 'Опубликованный видео отзыв',
             'review.published' => 'Опубликованный отзыв',
             'store.order_paid' => 'Оплаченный заказ',
             'referral.signup' => 'Регистрация реферала',

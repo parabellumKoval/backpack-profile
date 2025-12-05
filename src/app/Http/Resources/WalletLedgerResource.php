@@ -22,6 +22,7 @@ class WalletLedgerResource extends JsonResource
                 'value' => $this->amount,
                 'formatted' => number_format($this->amount, 2),
                 'currency' => $this->currency,
+                'currency_label' => currency_label($this->currency),
             ],
             'reference' => [
                 'type' => $this->reference_type,

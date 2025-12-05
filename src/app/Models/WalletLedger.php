@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Backpack\CRUD\app\Models\Traits\CrudTrait;
+use Backpack\Helpers\Traits\FormatsUniqAttribute;
 
 class WalletLedger extends Model
 {
     use CrudTrait, HasFactory;
+    use FormatsUniqAttribute;
 
     protected $table = 'ak_wallet_ledger';
 
@@ -67,11 +69,45 @@ class WalletLedger extends Model
     }
 
     public function getAmountHtmlAttribute() {
-      return view('crud::columns.price', ['price' => $this->amount, 'currency' => $this->currency, 'muted' => false]);
+      return view('crud::columns.price', [
+        'price' => $this->amount,
+        'currency' => currency_label($this->currency),
+        'muted' => false
+      ]);
     }
 
 
     public function getTypeHtmlAttribute() {
       return view('crud::columns.ledger_type', ['ledger' => $this]);
+    }
+
+    public function getUniqStringAttribute(): string
+    {
+        $user = $this->relationLoaded('user') ? $this->getRelation('user') : null;
+
+        return $this->formatUniqString([
+            '#'.$this->id,
+            $this->type,
+            sprintf('%s %s', $this->amount ?? 0, $this->currency ?? ''),
+            sprintf('%s #%s', $this->reference_type, $this->reference_id ?? '?'),
+            $user?->email ?? sprintf('user #%s', $this->user_id ?? '?'),
+            $this->created_at ? $this->created_at->format('Y-m-d H:i') : null,
+        ]);
+    }
+
+    public function getUniqHtmlAttribute(): string
+    {
+        $user = $this->relationLoaded('user') ? $this->getRelation('user') : null;
+        $headline = $this->formatUniqString([
+            '#'.$this->id,
+            sprintf('%s %s', $this->amount ?? 0, $this->currency ?? ''),
+        ]);
+
+        return $this->formatUniqHtml($headline, [
+            $this->type,
+            sprintf('%s #%s', $this->reference_type, $this->reference_id ?? '?'),
+            $user?->email ?? sprintf('user #%s', $this->user_id ?? '?'),
+            $this->created_at ? $this->created_at->format('Y-m-d H:i') : null,
+        ]);
     }
 }

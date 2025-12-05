@@ -5,10 +5,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Backpack\CRUD\app\Models\Traits\CrudTrait;
     use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Backpack\Helpers\Traits\FormatsUniqAttribute;
 
 class RewardEvent extends Model
 {
     use CrudTrait;
+    use FormatsUniqAttribute;
 
     protected $table = 'ak_reward_events';
 
@@ -52,5 +54,32 @@ class RewardEvent extends Model
     public function getStatusHtmlAttribute(){
     //   return $this->status;
       return view('crud::columns.status', ['status' => $this->status, 'context' => 'reward', 'type' => 'badge', 'namespace' => 'profile::base']);
+    }
+
+    public function getUniqStringAttribute(): string
+    {
+        return $this->formatUniqString([
+            '#'.$this->id,
+            $this->trigger,
+            $this->external_id,
+            sprintf('status: %s', $this->status ?? '-'),
+            'attempts: '.$this->attempts,
+            $this->happened_at ? 'at '.$this->happened_at->format('Y-m-d H:i') : null,
+        ]);
+    }
+
+    public function getUniqHtmlAttribute(): string
+    {
+        $headline = $this->formatUniqString([
+            '#'.$this->id,
+            $this->trigger,
+        ]);
+
+        return $this->formatUniqHtml($headline, [
+            $this->external_id,
+            sprintf('status: %s', $this->status ?? '-'),
+            'attempts: '.$this->attempts,
+            $this->happened_at ? 'at '.$this->happened_at->format('Y-m-d H:i') : null,
+        ]);
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Backpack\Helpers\Traits\FormatsUniqAttribute;
 
 // FACTORY
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +21,7 @@ class Profile extends Authenticatable
     use Notifiable;
     use HasFactory;
     use CanResetPassword;
+    use FormatsUniqAttribute;
 
     /*
     |--------------------------------------------------------------------------
@@ -44,13 +46,9 @@ class Profile extends Authenticatable
     ];
 
     public const ADDRESS_KEYS = [
-        'first_name',
-        'last_name',
-        'company',
         'email',
         'phone',
         'address_1',
-        'address_2',
         'postcode',
         'city',
         'state',
@@ -285,6 +283,32 @@ class Profile extends Authenticatable
     | ACCESSORS
     |--------------------------------------------------------------------------
     */
+    public function getUniqStringAttribute(): string
+    {
+        return $this->formatUniqString([
+            '#'.$this->id,
+            $this->fullname,
+            $this->email,
+            $this->phone,
+            $this->country_code,
+            sprintf('discount: %s%%', $this->discount_percent ?? 0),
+        ]);
+    }
+
+    public function getUniqHtmlAttribute(): string
+    {
+        $headline = $this->formatUniqString([
+            '#'.$this->id,
+            $this->fullname ?: $this->email,
+        ]);
+
+        return $this->formatUniqHtml($headline, [
+            $this->email,
+            $this->phone,
+            $this->country_code,
+            sprintf('discount: %s%%', $this->discount_percent ?? 0),
+        ]);
+    }
     
     public function getWalletBalanceAttribute() {
       return optional($this->user)->walletBalance;
@@ -421,15 +445,6 @@ class Profile extends Authenticatable
         );
     }
 	    
-    /**
-     * getUniqStringAttribute
-     *
-     * @return void
-     */
-    public function getUniqStringAttribute() {
-      return implode(', ', [$this->email, $this->phone, $this->fullname]);
-    }
-
     public function getBillingAttribute($value = null): array
     {
         if (is_array($value)) {

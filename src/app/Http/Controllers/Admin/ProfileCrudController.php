@@ -476,13 +476,9 @@ class ProfileCrudController extends CrudController
     {
         return [
             $prefix => ['array'],
-            "{$prefix}.first_name" => ['nullable', 'string', 'max:255'],
-            "{$prefix}.last_name" => ['nullable', 'string', 'max:255'],
-            "{$prefix}.company" => ['nullable', 'string', 'max:255'],
             "{$prefix}.email" => ['nullable', 'email', 'max:255'],
             "{$prefix}.phone" => ['nullable', 'string', 'max:255'],
             "{$prefix}.address_1" => ['nullable', 'string', 'max:255'],
-            "{$prefix}.address_2" => ['nullable', 'string', 'max:255'],
             "{$prefix}.postcode" => ['nullable', 'string', 'max:255'],
             "{$prefix}.city" => ['nullable', 'string', 'max:255'],
             "{$prefix}.state" => ['nullable', 'string', 'max:255'],
@@ -514,13 +510,9 @@ class ProfileCrudController extends CrudController
     protected function addressAttributeLabels(string $prefix, string $title): array
     {
         $fields = [
-            'first_name' => 'Имя',
-            'last_name' => 'Фамилия',
-            'company' => 'Компания',
             'email' => 'Email',
             'phone' => 'Телефон',
             'address_1' => 'Адрес 1',
-            'address_2' => 'Адрес 2',
             'postcode' => 'Индекс',
             'city' => 'Город',
             'state' => 'Регион',
@@ -596,24 +588,6 @@ class ProfileCrudController extends CrudController
     {
         return [
             [
-                'name' => 'first_name',
-                'label' => 'Имя',
-                'type' => 'text',
-                'wrapper' => ['class' => 'form-group col-md-6'],
-            ],
-            [
-                'name' => 'last_name',
-                'label' => 'Фамилия',
-                'type' => 'text',
-                'wrapper' => ['class' => 'form-group col-md-6'],
-            ],
-            [
-                'name' => 'company',
-                'label' => 'Компания',
-                'type' => 'text',
-                'wrapper' => ['class' => 'form-group col-md-6'],
-            ],
-            [
                 'name' => 'email',
                 'label' => 'Email',
                 'type' => 'email',
@@ -628,12 +602,6 @@ class ProfileCrudController extends CrudController
             [
                 'name' => 'address_1',
                 'label' => 'Адрес 1',
-                'type' => 'text',
-                'wrapper' => ['class' => 'form-group col-md-6'],
-            ],
-            [
-                'name' => 'address_2',
-                'label' => 'Адрес 2',
                 'type' => 'text',
                 'wrapper' => ['class' => 'form-group col-md-6'],
             ],

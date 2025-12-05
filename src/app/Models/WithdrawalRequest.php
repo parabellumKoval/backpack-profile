@@ -5,11 +5,13 @@ use Illuminate\Database\Eloquent\Model;
 use Backpack\CRUD\app\Models\Traits\CrudTrait;
 
 use Backpack\Profile\app\Models\Concerns\ResolvesUserModel;
+use Backpack\Helpers\Traits\FormatsUniqAttribute;
 
 class WithdrawalRequest extends Model
 {
     use CrudTrait;
     use ResolvesUserModel;
+    use FormatsUniqAttribute;
 
     protected $table = 'ak_withdrawal_requests';
 
@@ -75,5 +77,36 @@ class WithdrawalRequest extends Model
         //
         'ledger' => $this->ledger()->first()
       ]);
+    }
+
+    public function getUniqStringAttribute(): string
+    {
+        $user = $this->relationLoaded('user') ? $this->getRelation('user') : null;
+
+        return $this->formatUniqString([
+            '#'.$this->id,
+            sprintf('%s %s', $this->amount ?? 0, $this->currency ?? ''),
+            sprintf('status: %s', $this->status ?? '-'),
+            'method: '.$this->payout_method,
+            $user?->email ?? sprintf('user #%s', $this->user_id ?? '?'),
+            $this->created_at ? $this->created_at->format('Y-m-d H:i') : null,
+        ]);
+    }
+
+    public function getUniqHtmlAttribute(): string
+    {
+        $user = $this->relationLoaded('user') ? $this->getRelation('user') : null;
+        $headline = $this->formatUniqString([
+            '#'.$this->id,
+            sprintf('%s %s', $this->amount ?? 0, $this->currency ?? ''),
+        ]);
+
+        return $this->formatUniqHtml($headline, [
+            sprintf('status: %s', $this->status ?? '-'),
+            'method: '.$this->payout_method,
+            $user?->email ?? sprintf('user #%s', $this->user_id ?? '?'),
+            $this->approved_at ? 'approved '.$this->approved_at->format('Y-m-d H:i') : null,
+            $this->paid_at ? 'paid '.$this->paid_at->format('Y-m-d H:i') : null,
+        ]);
     }
 }
