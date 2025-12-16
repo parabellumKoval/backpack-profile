@@ -68,11 +68,6 @@ class AuthController extends Controller
         // Выдать token (Bearer) — удобно для Postman/Nuxt
         $token = $user->createToken('api')->plainTextToken;
 
-        // Если нужно требовать email-верификацию — фронт может проверить $user->hasVerifiedEmail()
-        if (\Settings::get('profile.users.require_email_verification', true)) {
-            $user->sendEmailVerificationNotification();
-        }
-
         return response()->json([
             'user'  => $user->only(['id','name','email','email_verified_at']),
             'token' => $token,

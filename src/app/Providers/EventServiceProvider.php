@@ -3,6 +3,7 @@
 namespace Backpack\Profile\app\Providers;
 
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Event;
 use Backpack\Profile\app\Events\ReferralAttached;
 use Backpack\Profile\app\Models\Profile;
 
@@ -25,6 +26,10 @@ class EventServiceProvider extends ServiceProvider
     public function boot()
     {
       parent::boot();
+
+      // Disable Laravel's default email verification listener
+      // The main application will handle this via EventServiceProvider
+      $this->configureEmailVerification();
 
       // Profile::observe(ProfileObserver::class);
 
@@ -51,5 +56,16 @@ class EventServiceProvider extends ServiceProvider
 
           event(new ReferralAttached($profile, $sponsor));
       });
+    }
+
+    /**
+     * Skip automatic email verification listener registration.
+     * Prevent duplicate email verification notifications.
+     */
+    protected function configureEmailVerification()
+    {
+        // Remove any default Laravel email verification listeners
+        // The host application registers the verification notification once.
+        Event::forget(\Illuminate\Auth\Events\Registered::class);
     }
 }
