@@ -19,15 +19,19 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
             require_once $helpers;
         }
 
-        View::addNamespace('profile-backpack', [
-            resource_path('views/vendor/profile'),
-            __DIR__.'/resources/views',
-        ]);
+        $profilePaths = [__DIR__.'/resources/views'];
+        $profileVendorPath = resource_path('views/vendor/profile');
+        if (is_dir($profileVendorPath)) {
+            array_unshift($profilePaths, $profileVendorPath);
+        }
+        View::addNamespace('profile-backpack', $profilePaths);
 
-        View::addNamespace('crud', [
-            resource_path('views/vendor/backpack/crud'),
-            __DIR__.'/resources/views/vendor/backpack/crud',
-        ]);
+        $crudPaths = [__DIR__.'/resources/views/vendor/backpack/crud'];
+        $crudVendorPath = resource_path('views/vendor/backpack/crud');
+        if (is_dir($crudVendorPath)) {
+            array_unshift($crudPaths, $crudVendorPath);
+        }
+        View::addNamespace('crud', $crudPaths);
 
         // Currency names
         $this->app->singleton(\Backpack\Profile\app\Contracts\CurrencyNameResolver::class, \Backpack\Profile\app\Services\CurrencyNameResolver::class);
