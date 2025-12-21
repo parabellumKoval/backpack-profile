@@ -9,10 +9,12 @@ use Backpack\Profile\app\Models\Reward;
 use Backpack\Profile\app\Models\WalletBalance;
 use Backpack\Profile\app\Models\WalletLedger;
 use Backpack\Profile\app\Models\WithdrawalRequest;
+use Backpack\Profile\app\Support\ProfileRoles;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use ParabellumKoval\BackpackImages\Exceptions\ImageUploadException;
@@ -26,6 +28,7 @@ class ProfileCrudController extends CrudController
     use \Backpack\CRUD\app\Http\Controllers\Operations\CreateOperation;
     use \Backpack\CRUD\app\Http\Controllers\Operations\UpdateOperation;
     use \Backpack\CRUD\app\Http\Controllers\Operations\DeleteOperation;
+    use \Backpack\CRUD\app\Http\Controllers\Operations\BulkDeleteOperation;
     use \Backpack\CRUD\app\Http\Controllers\Operations\ShowOperation;
 
     public function __construct(protected ImageUploader $imageUploader)
@@ -64,6 +67,12 @@ class ProfileCrudController extends CrudController
         ]);
 
         $this->crud->addColumn([
+            'name' => 'role',
+            'label' => 'Роль',
+            'type' => 'profile_role',
+        ]);
+
+        $this->crud->addColumn([
             'name' => 'referral_code',
             'label' => 'Реферальный код',
         ]);
@@ -81,6 +90,7 @@ class ProfileCrudController extends CrudController
             'name' => 'balanceHtml',
             'label' => 'Баланс',
             'escaped' => false,
+            'limit' => 5500
         ]);
 
         $this->crud->addColumn([
@@ -90,6 +100,116 @@ class ProfileCrudController extends CrudController
             'decimals' => 2,
             'suffix' => ' %',
         ]);
+
+        $this->addFilters();
+    }
+
+    protected function addFilters(): void
+    {
+        $this->addRoleFilter();
+        $this->addReferralFilter();
+        $this->addBalanceFilter();
+        $this->addDiscountFilter();
+        $this->addCountryFilter();
+        $this->addLocaleFilter();
+    }
+
+    protected function addRoleFilter(): void
+    {
+        $options = ProfileRoles::options();
+
+        if (empty($options)) {
+            return;
+        }
+
+        $this->crud->addFilter(
+            ['type' => 'dropdown', 'name' => 'role', 'label' => 'Роль'],
+            $options,
+            fn ($value) => $this->crud->addClause('where', 'role', $value)
+        );
+    }
+
+    protected function addReferralFilter(): void
+    {
+        $this->crud->addFilter(
+            ['type' => 'dropdown', 'name' => 'referrals', 'label' => 'Рефералы'],
+            ['with' => 'Есть рефералы', 'without' => 'Нет рефералов'],
+            function ($value) {
+                if ($value === 'with') {
+                    $this->crud->addClause('whereHas', 'referrals');
+                } elseif ($value === 'without') {
+                    $this->crud->addClause('whereDoesntHave', 'referrals');
+                }
+            }
+        );
+    }
+
+    protected function addBalanceFilter(): void
+    {
+        $this->crud->addFilter(
+            ['type' => 'dropdown', 'name' => 'wallet_balance', 'label' => 'Баланс'],
+            ['positive' => 'С балансом', 'empty' => 'Пустой или 0'],
+            function ($value) {
+                if ($value === 'positive') {
+                    $this->crud->addClause('whereHas', 'user.walletBalance', fn ($q) => $q->where('balance', '>', 0));
+                } elseif ($value === 'empty') {
+                    $this->crud->addClause('where', function ($query) {
+                        $query
+                            ->whereDoesntHave('user.walletBalance')
+                            ->orWhereHas('user.walletBalance', fn ($q) => $q->where('balance', '<=', 0));
+                    });
+                }
+            }
+        );
+    }
+
+    protected function addDiscountFilter(): void
+    {
+        $this->crud->addFilter(
+            ['type' => 'dropdown', 'name' => 'personal_discount', 'label' => 'Персональная скидка'],
+            ['with' => 'Есть', 'without' => 'Нет'],
+            function ($value) {
+                if ($value === 'with') {
+                    $this->crud->addClause('where', 'discount_percent', '>', 0);
+                } elseif ($value === 'without') {
+                    $this->crud->addClause('where', function ($query) {
+                        $query
+                            ->whereNull('discount_percent')
+                            ->orWhere('discount_percent', '<=', 0);
+                    });
+                }
+            }
+        );
+    }
+
+    protected function addCountryFilter(): void
+    {
+        $this->crud->addFilter(
+            ['type' => 'select2', 'name' => 'country_code', 'label' => 'Страна'],
+            fn () => Profile::query()
+                ->whereNotNull('country_code')
+                ->select('country_code')
+                ->distinct()
+                ->orderBy('country_code')
+                ->pluck('country_code', 'country_code')
+                ->toArray(),
+            fn ($value) => $this->crud->addClause('where', 'country_code', $value)
+        );
+    }
+
+    protected function addLocaleFilter(): void
+    {
+        $this->crud->addFilter(
+            ['type' => 'select2', 'name' => 'locale', 'label' => 'Язык'],
+            fn () => Profile::query()
+                ->whereNotNull('locale')
+                ->select('locale')
+                ->distinct()
+                ->orderBy('locale')
+                ->pluck('locale', 'locale')
+                ->toArray(),
+            fn ($value) => $this->crud->addClause('where', 'locale', $value)
+        );
     }
 
     protected function setupCreateOperation(): void
@@ -108,6 +228,15 @@ class ProfileCrudController extends CrudController
         $billing = Profile::fillAddress($profile?->getMetaSection('billing'));
         $shipping = Profile::fillAddress($profile?->getMetaSection('shipping'));
         $avatar = $profile?->avatarUrl();
+        $roleOptions = ProfileRoles::options();
+        $selectedRole = $profile?->role ?? ProfileRoles::defaultRole();
+
+        if ($selectedRole && !array_key_exists($selectedRole, $roleOptions)) {
+            $selectedRole = null;
+        }
+        if (!$selectedRole && !empty($roleOptions)) {
+            $selectedRole = array_key_first($roleOptions);
+        }
 
         $this->crud->addFields([
             [
@@ -182,6 +311,18 @@ class ProfileCrudController extends CrudController
                 'wrapper' => ['class' => 'form-group col-md-4'],
             ],
             [
+                'name' => 'profile[role]',
+                'label' => 'Роль',
+                'type' => 'select_from_array',
+                'options' => $roleOptions,
+                'allows_null' => true,
+                'tab' => 'Профиль',
+                'value' => $selectedRole,
+                'default' => $selectedRole,
+                'wrapper' => ['class' => 'form-group col-md-4'],
+                'attributes' => ['data-role-selector' => 1],
+            ],
+            [
                 'name' => 'profile[discount_percent]',
                 'label' => 'Скидка, %',
                 'type' => 'number',
@@ -220,6 +361,87 @@ class ProfileCrudController extends CrudController
                 'value' => $shipping,
             ],
         ]);
+
+        $this->addRoleSpecificFields($profile, $selectedRole);
+    }
+
+    protected function addRoleSpecificFields(?Profile $profile, ?string $selectedRole): void
+    {
+        $roleFields = ProfileRoles::roleFields();
+        if (empty($roleFields)) {
+            return;
+        }
+
+        foreach ($roleFields as $roleKey => $fields) {
+            if (!is_array($fields)) {
+                continue;
+            }
+
+            $values = $profile?->rolePayload($roleKey) ?? [];
+            $shouldShow = $selectedRole ? $roleKey === $selectedRole : false;
+
+            foreach ($fields as $field) {
+                $name = $field['name'] ?? null;
+                if (!$name) {
+                    continue;
+                }
+
+                $definition = $field;
+                unset($definition['validation_rules'], $definition['rules']);
+
+                $definition['name'] = "role_fields[{$roleKey}][{$name}]";
+                $definition['tab'] = $definition['tab'] ?? 'Профиль';
+                $definition['value'] = Arr::get($values, $name, $definition['value'] ?? null);
+
+                $wrapper = $definition['wrapper'] ?? [];
+                $wrapper['data-role-only'] = $roleKey;
+                $wrapper['class'] = trim(($wrapper['class'] ?? 'form-group') . ' role-field role-field-' . $roleKey . ($shouldShow ? '' : ' d-none'));
+                $definition['wrapper'] = $wrapper;
+                $attributes = $definition['attributes'] ?? [];
+                if (!$shouldShow) {
+                    $attributes['disabled'] = 'disabled';
+                }
+                $definition['attributes'] = $attributes;
+
+                $this->crud->addField($definition);
+            }
+        }
+
+        $this->crud->addField($this->roleFieldsTogglerField());
+    }
+
+    protected function roleFieldsTogglerField(): array
+    {
+        return [
+            'name' => 'role_fields_helper',
+            'type' => 'custom_html',
+            'tab' => 'Профиль',
+            'value' => <<<'HTML'
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var selector = document.querySelector('[data-role-selector]');
+  if (!selector) {
+    return;
+  }
+
+  var toggleRoleFields = function () {
+    var currentRole = selector.value || '';
+    document.querySelectorAll('[data-role-only]').forEach(function (wrapper) {
+      var shouldShow = wrapper.getAttribute('data-role-only') === currentRole;
+      wrapper.classList.toggle('d-none', !shouldShow);
+
+      wrapper.querySelectorAll('input, select, textarea').forEach(function (input) {
+        input.disabled = !shouldShow;
+      });
+    });
+  };
+
+  selector.addEventListener('change', toggleRoleFields);
+  toggleRoleFields();
+});
+</script>
+HTML,
+        ];
     }
 
     public function store()
@@ -328,6 +550,7 @@ class ProfileCrudController extends CrudController
         $profile->country_code = $profileData['country_code'] ?? null;
         $profile->locale = $profileData['locale'] ?? null;
         $profile->timezone = $profileData['timezone'] ?? null;
+        $profile->role = $profileData['role'] ?? $profile->role ?? ProfileRoles::defaultRole();
 
         if (array_key_exists('discount_percent', $profileData)) {
             $profile->discount_percent = $profileData['discount_percent'] ?? 0;
@@ -338,6 +561,10 @@ class ProfileCrudController extends CrudController
 
         $profile->billing = $payload['billing'];
         $profile->shipping = $payload['shipping'];
+
+        if ($profile->role) {
+            $profile->setRolePayload($profile->role, $payload['role_fields'] ?? []);
+        }
 
         $this->handleAvatarUpload($profile, $payload['avatar']);
     }
@@ -418,13 +645,31 @@ class ProfileCrudController extends CrudController
             'avatar' => ['nullable', 'string'],
         ];
 
+        $availableRoles = array_keys(ProfileRoles::definitions());
+        if ($availableRoles) {
+            $rules['profile.role'] = array_filter(['nullable', Rule::in($availableRoles)]);
+        }
+
         $rules = array_merge(
             $rules,
             $this->addressValidationRules('billing'),
             $this->addressValidationRules('shipping')
         );
 
-        $validator = Validator::make($request->all(), $rules, [], $this->validationAttributes());
+        $selectedRole = $request->input('profile.role');
+        $selectedRole = $selectedRole !== null && $selectedRole !== ''
+            ? $selectedRole
+            : ($profile?->role ?? ProfileRoles::defaultRole());
+
+        foreach (ProfileRoles::validationRulesForRole($selectedRole) as $fieldName => $rule) {
+            $rules["role_fields.{$selectedRole}.{$fieldName}"] = $rule;
+        }
+
+        if (!empty(ProfileRoles::roleFields())) {
+            $rules['role_fields'] = ['array'];
+        }
+
+        $validator = Validator::make($request->all(), $rules, [], $this->validationAttributes($selectedRole));
         $data = $validator->validate();
 
         $userData = $this->sanitizeArray($data['user']);
@@ -432,6 +677,16 @@ class ProfileCrudController extends CrudController
         $billing = $this->sanitizeArray($data['billing'] ?? []);
         $shipping = $this->sanitizeArray($data['shipping'] ?? []);
         $avatar = isset($data['avatar']) ? trim((string) $data['avatar']) : null;
+        $selectedRole = $profileData['role'] ?? $selectedRole;
+        $selectedRole = $selectedRole !== null && $selectedRole !== ''
+            ? $selectedRole
+            : ProfileRoles::defaultRole();
+
+        $roleFields = [];
+        if ($selectedRole) {
+            $roleFields = $this->sanitizeArray(Arr::get($data, "role_fields.{$selectedRole}", []));
+            $profileData['role'] = $selectedRole;
+        }
 
         if (!empty($profileData['country_code'])) {
             $profileData['country_code'] = strtoupper($profileData['country_code']);
@@ -455,6 +710,7 @@ class ProfileCrudController extends CrudController
             'billing' => $billing,
             'shipping' => $shipping,
             'avatar' => $avatar,
+            'role_fields' => $roleFields,
         ];
     }
 
@@ -486,7 +742,7 @@ class ProfileCrudController extends CrudController
         ];
     }
 
-    protected function validationAttributes(): array
+    protected function validationAttributes(?string $role = null): array
     {
         return array_merge(
             [
@@ -503,7 +759,8 @@ class ProfileCrudController extends CrudController
                 'avatar' => 'Аватар',
             ],
             $this->addressAttributeLabels('billing', 'Billing'),
-            $this->addressAttributeLabels('shipping', 'Shipping')
+            $this->addressAttributeLabels('shipping', 'Shipping'),
+            ProfileRoles::attributeLabelsForRole($role)
         );
     }
 

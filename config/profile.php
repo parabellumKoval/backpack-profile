@@ -26,6 +26,33 @@ return [
     'auth.api:sanctum' // auth:sanctum
   ],
 
+  'roles' => [
+    'customer' => [
+      'label' => 'Покупатель',
+      'badge_class' => 'badge-success',
+      'color' => '#198754',
+    ],
+    'bot' => [
+      'label' => 'Бот',
+      'badge_class' => 'badge-info',
+      'color' => '#0ea5e9',
+    ],
+    'influencer' => [
+      'label' => 'Инфлюенсер',
+      'badge_class' => 'badge-warning',
+      'color' => '#f59e0b',
+    ],
+    'manager' => [
+      'label' => 'Менеджер',
+      'badge_class' => 'badge-primary',
+      'color' => '#2563eb',
+    ],
+  ],
+
+  'default_role' => 'customer',
+
+  'role_fields' => [],
+
   // REFERRALS & BONUSES
   'referral_enabled' => true,
   'referral_levels' => 3,

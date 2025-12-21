@@ -87,6 +87,21 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
             self::CONFIG_PATH,
             'profile'
         );
+        $this->mergeConfigFrom(
+            self::CONFIG_PATH,
+            'backpack.profile'
+        );
+
+        $this->app->booting(function () {
+            $defaults = (array) config('profile', []);
+            $overrides = (array) config('backpack.profile', []);
+            $merged = array_replace_recursive($defaults, $overrides);
+
+            config([
+                'profile' => $merged,
+                'backpack.profile' => $merged,
+            ]);
+        });
 
         $impl = config('profile.currency_converter');
 

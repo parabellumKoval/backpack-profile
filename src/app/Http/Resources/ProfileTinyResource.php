@@ -25,6 +25,8 @@ class ProfileTinyResource extends JsonResource
             'avatar' => $avatar,
             'avatar_url' => $avatar,
             'referral_code' => $this->referral_code,
+            'role' => $this->role,
+            'role_label' => $this->role_label,
             'created_at' => optional($this->created_at)->toIso8601String(),
         ];
     }

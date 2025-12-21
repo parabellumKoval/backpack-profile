@@ -10,9 +10,11 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Backpack\Helpers\Traits\FormatsUniqAttribute;
+use Backpack\Profile\app\Support\ProfileRoles;
 
 // FACTORY
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Backpack\Profile\app\Models\WalletBalance;
 use Backpack\Profile\database\factories\ProfileFactory;
 
 class Profile extends Authenticatable
@@ -149,6 +151,9 @@ class Profile extends Authenticatable
             'referral_code' => $this->referral_code,
             'discount_percent' => $this->discount_percent,
             'personal_discount_percent' => $this->personal_discount_percent,
+            'role' => $this->role,
+            'role_label' => $this->role_label,
+            'role_data' => $this->rolePayload(),
             'billing' => static::fillAddress($this->getMetaSection('billing')),
             'shipping' => static::fillAddress($this->getMetaSection('shipping')),
             'meta' => $this->metaWithoutOther(),
@@ -292,6 +297,7 @@ class Profile extends Authenticatable
             $this->phone,
             $this->country_code,
             sprintf('discount: %s%%', $this->discount_percent ?? 0),
+            sprintf('role: %s', $this->role_label ?? $this->role ?? '—'),
         ]);
     }
 
@@ -307,6 +313,7 @@ class Profile extends Authenticatable
             $this->phone,
             $this->country_code,
             sprintf('discount: %s%%', $this->discount_percent ?? 0),
+            sprintf('role: %s', $this->role_label ?? $this->role ?? '—'),
         ]);
     }
     
@@ -314,15 +321,17 @@ class Profile extends Authenticatable
       return optional($this->user)->walletBalance;
     }
 
-    public function getBalanceHtmlAttribute() {
-      $wallet = optional($this->user)->walletBalance;
-      
-      if(!$wallet) return '-';
+    public function getBalanceHtmlAttribute()
+    {
+        $user = $this->user;
+        if (!$user || !$user->walletBalance || $user->walletBalance->balance === 0) {
+            return '-';
+        }
 
-      return view('crud::columns.price', [
-        'price' => $wallet->balance,
-        'currency' => \currency_label($wallet->currency)
-      ]);
+        return view('crud::columns.price', [
+            'price' => $user->walletBalance->balance ?? 0,
+            'currency' => currency_label($user->walletBalance->currency)
+        ]);
     }
 
     public function getEmailAttribute() {
@@ -473,6 +482,45 @@ class Profile extends Authenticatable
     {
         $normalized = static::normalizeAddress(is_array($value) ? $value : []);
         $this->setMetaSection('shipping', $normalized);
+    }
+
+    public function roleDefinition(): ?array
+    {
+        return ProfileRoles::definition($this->role);
+    }
+
+    public function getRoleLabelAttribute(): ?string
+    {
+        $definition = $this->roleDefinition();
+
+        if (isset($definition['label'])) {
+            return $definition['label'];
+        }
+
+        return $this->role ? Str::headline($this->role) : null;
+    }
+
+    public function rolePayload(?string $role = null): array
+    {
+        $roleKey = $role ?? $this->role;
+        if (!$roleKey) {
+            return [];
+        }
+
+        $extras = is_array($this->extras) ? $this->extras : [];
+        $payload = Arr::get($extras, 'role_data.' . $roleKey, []);
+
+        return is_array($payload) ? $payload : [];
+    }
+
+    public function setRolePayload(string $role, array $payload): void
+    {
+        $extras = is_array($this->extras) ? $this->extras : [];
+        $roleData = Arr::get($extras, 'role_data', []);
+        $roleData[$role] = $payload;
+        $extras['role_data'] = $roleData;
+
+        $this->extras = $extras;
     }
 
     public function getMetaSection(string $section, ?array $default = []): array
