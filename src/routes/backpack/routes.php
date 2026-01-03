@@ -15,6 +15,8 @@ Route::group([
     Route::crud('reward-events', 'RewardEventCrudController');
     Route::crud('rewards',       'RewardCrudController');
     Route::crud('wallet-ledger', 'WalletLedgerCrudController');
+    Route::crud('notification-events', 'NotificationEventCrudController');
+    Route::crud('notifications', 'NotificationCrudController');
 
     //
     Route::post('reward-events/{id}/process', 'RewardEventCrudController@process');

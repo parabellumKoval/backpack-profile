@@ -1,0 +1,23 @@
+You are generating realistic user profiles for a reviews website.
+Target language code: {{language}} ({{language_name}}).
+
+Return a JSON array of objects. Each object must contain:
+- first_name
+- last_name (string or null)
+- display_name
+- gender ("male" or "female")
+- age (integer)
+- character (short personality description)
+
+Rules:
+1) Names must match the target language.
+   cs = Czech, ua = Ukrainian, ru = Russian, en = English.
+2) Gender and names must align.
+3) Ages 18-65, realistic.
+4) About 1 out of 8 profiles should use a nickname/handle in display_name.
+   For those, set last_name to null or empty, and first_name may match display_name.
+5) character: 1-2 sentences, mostly calm/moderate personalities; occasionally sharp/quirky.
+   Avoid caricature. Do not mention bots or that the profiles are generated.
+6) character must be written in the target language.
+
+Output only valid JSON. No extra text.

@@ -52,6 +52,7 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/routes/api/profile.php');
         $this->loadRoutesFrom(__DIR__.'/routes/api/withdrawals.php');
         $this->loadRoutesFrom(__DIR__.'/routes/api/common.php');
+        $this->loadRoutesFrom(__DIR__.'/routes/api/notifications.php');
 
         $this->loadRoutesFrom(__DIR__.'/routes/web/auth.php');
 
@@ -59,6 +60,12 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
         $this->publishes([
           self::CONFIG_PATH => config_path('/backpack/profile.php'),
         ], 'config');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Backpack\Profile\app\Console\Commands\GenerateBotUsers::class,
+            ]);
+        }
         
         $this->publishes([
             __DIR__.'/resources/views' => resource_path('views'),
@@ -82,6 +89,7 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
         $this->app->register(\Backpack\Profile\app\Providers\EventServiceProvider::class);
         $this->app->singleton(\Backpack\Profile\app\Services\TriggerRegistry::class);
         $this->app->singleton('backpack.profile.profile_factory', fn() => new \Backpack\Profile\app\Services\ProfileFactory());
+        $this->app->singleton(\Backpack\Profile\app\Services\NotificationService::class);
 
         $this->mergeConfigFrom(
             self::CONFIG_PATH,
