@@ -8,16 +8,37 @@ Return a JSON array of objects. Each object must contain:
 - gender ("male" or "female")
 - age (integer)
 - character (short personality description)
+- literacy_level (integer, 0-10)
+- speech_style (short descriptive string)
+- emoji_usage (short descriptive string)
+- punctuation_usage (short descriptive string)
+- message_length (short descriptive string)
 
 Rules:
-1) Names must match the target language.
-   cs = Czech, ua = Ukrainian, ru = Russian, en = English.
+1) Names must match the target language unless specified otherwise below.
+   Examples: cs = Czech, uk = Ukrainian, ru = Russian, en = English, de = German, es = Spanish.
 2) Gender and names must align.
-3) Ages 18-65, realistic.
-4) About 1 out of 8 profiles should use a nickname/handle in display_name.
-   For those, set last_name to null or empty, and first_name may match display_name.
-5) character: 1-2 sentences, mostly calm/moderate personalities; occasionally sharp/quirky.
+3) Ages 18-60, realistic. Probability guidance: ~80% should be 18-40, ~20% 41-60.
+4) display_name/first/last name variation (ensure variety and naturalness):
+   - ~40% full proper name in target language (e.g., "Наталія Бойко").
+   - ~15% only first name in target language (last_name null/empty).
+   - ~10% proper name but in Latin transliteration (e.g., "Nataliia Boiko").
+   - ~15% nickname/handle with clear meaning (e.g., "KratomLover1").
+   - ~10% proper first name + playful/word-based surname (e.g., "Наталия Чайная", "Коля Самолет").
+   - ~10% nickname with unclear meaning, can be in Latin even for non-English users (e.g., "TrixxyDooo").
+   For any nickname/handle cases, set last_name to null or empty; first_name may match display_name.
+5) character: 1-2 sentences, mostly calm/moderate personalities.
+   About 70% should be average/neutral, about 30% can be more distinctive but still realistic.
    Avoid caricature. Do not mention bots or that the profiles are generated.
-6) character must be written in the target language.
+6) literacy_level: integer from 0 to 10, no decimals.
+   Distribution: mostly 4-9, only a few at the extremes 0-2 or 10.
+7) speech_style: describe a mix of 2-3 styles with intensity (1-10) to avoid absolutes.
+   Example format: "slangy 6/10, biohacker 9/10, casual 4/10".
+   Probability guidance: ~70% common/neutral mixes, ~30% more unconventional but still realistic.
+8) emoji_usage: mention whether they use text emoticons, emoji, or both; frequency; typical count in a row.
+9) punctuation_usage: mention whether they use repeated punctuation (e.g., "...", "???", "!!!")
+   and whether punctuation is careful or chaotic.
+10) message_length: concise / medium / longer tendency.
+11) character, speech_style, emoji_usage, punctuation_usage, message_length must be written in the target language.
 
 Output only valid JSON. No extra text.

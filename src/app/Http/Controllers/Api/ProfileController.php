@@ -389,6 +389,7 @@ class ProfileController extends \App\Http\Controllers\Controller
         $labels = [
             'review.published.text' => 'Опубликованный текстовый отзыв',
             'review.published.video' => 'Опубликованный видео отзыв',
+            'review.published.photo' => 'Опубликованный фото отзыв',
             'review.published' => 'Опубликованный отзыв',
             'store.order_paid' => 'Оплаченный заказ',
             'referral.signup' => 'Регистрация реферала',

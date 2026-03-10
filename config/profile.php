@@ -75,6 +75,10 @@ return [
     'account_service' => \Backpack\Profile\app\Services\BonusAccountService::class,
   ],
 
+  'bot_generation' => [
+    'default_password' => env('PROFILE_BOT_PASSWORD', 'bot228vivadzen'),
+  ],
+
   'currencies' => [
     'usd' => [
       'code' => 'USD',

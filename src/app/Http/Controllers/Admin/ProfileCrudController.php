@@ -48,6 +48,8 @@ class ProfileCrudController extends CrudController
 
     protected function setupListOperation(): void
     {
+        $this->crud->addButtonFromView('top', 'generate_bots', 'profile_generate_bots', 'end');
+
         $this->crud->addColumn([
             'name' => 'fullname',
             'label' => 'ФИО',

@@ -83,6 +83,37 @@ NOTIFICATIONS_POLLING_MS=15000
 - Если бродкастинг не доступен, фронт использует polling.
 - Звуковой “пилик” включается при новых уведомлениях (фронт).
 
+## Продакшн: Soketi внутри Docker
+
+1) В `docker-compose.yml` добавлен сервис `soketi`, который слушает порт `6001` внутри сети `api` и подставляет `PUSHER_*` значения из переменных окружения.
+
+2) Убедись, что `src/api/.env.prod` включает драйвер `pusher` и актуальные ключи/секреты (в примере ниже оставить `vivadzen*` как заглушки, заменив на реальные значения при сборке):
+
+```dotenv
+BROADCAST_DRIVER=pusher
+PUSHER_APP_ID=vivadzen
+PUSHER_APP_KEY=vivadzen
+PUSHER_APP_SECRET=vivadzen-secret
+PUSHER_HOST=soketi      # внутри docker-compose сервис доступен по имени soketi
+PUSHER_PORT=6001
+PUSHER_SCHEME=http
+PUSHER_APP_CLUSTER=mt1
+```
+
+3) Для фронтенда (`src/front/.env` или любой другой файл, который ты используешь при сборке/деплое) пропиши такие переменные, чтобы Nuxt подключался к открытому хосту Soketi (например `api.vivadzen.com` с проброшенным портом или собственным доменом):
+
+```dotenv
+NOTIFICATIONS_DRIVER=pusher
+NOTIFICATIONS_POLLING_MS=0
+PUSHER_APP_KEY=<тот же ключ, что и в api>
+PUSHER_HOST=<публичный адрес сокети, например api.vivadzen.com>
+PUSHER_PORT=6001
+PUSHER_SCHEME=https    # если путь защищён TLS, иначе http
+PUSHER_APP_CLUSTER=mt1
+```
+
+Важно: ключи/секреты должны совпадать с теми, что на стороне API. Добавь TLS-прокси или открой порт 6001 под доменом, с которым работает фронт, чтобы избежать блокировок mixed content.
+
 ## Как отправлять уведомления по событиям
 
 ### Общий подход
