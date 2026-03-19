@@ -3,6 +3,8 @@
 namespace Backpack\Profile\app\Console\Commands;
 
 use App\Support\GenerationRunReporter;
+use Backpack\Profile\app\Services\BotAvatarGenerator;
+use Backpack\Profile\app\Services\BotAvatarPromptPlanner;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +27,8 @@ class GenerateBotUsers extends Command
         {--password= : Password for generated users}
         {--verified : Mark emails as verified}
         {--unverified : Leave emails unverified}
+        {--with-avatars : Generate AI avatars for created bot profiles}
+        {--without-avatars : Skip avatar generation for created bot profiles}
         {--run-id= : Internal generation run ID for progress tracking}
         {--prompt-path= : Path to prompt template file}
         {--dry-run : Do not write to the database}';
@@ -49,7 +53,11 @@ class GenerateBotUsers extends Command
     private const DEFAULT_PASSWORD = 'bot228vivadzen';
     private const MAX_EMPTY_BATCH_ATTEMPTS = 3;
 
-    public function handle(ContentGenerator $generator): int
+    public function handle(
+        ContentGenerator $generator,
+        BotAvatarGenerator $avatarGenerator,
+        BotAvatarPromptPlanner $avatarPromptPlanner
+    ): int
     {
         $total = (int) $this->argument('count');
         if ($total < 1) {
@@ -91,24 +99,33 @@ class GenerateBotUsers extends Command
         }
 
         $emailDomain = trim((string) $this->option('email-domain')) ?: 'bot.local';
-        $defaultPassword = (string) config('backpack.profile.bot_generation.default_password', self::DEFAULT_PASSWORD);
+        $defaultPassword = (string) $this->setting(
+            'profile.bot_generation.default_password',
+            config('backpack.profile.bot_generation.default_password', self::DEFAULT_PASSWORD)
+        );
         $password = trim((string) ($this->option('password') ?: $defaultPassword));
         $verifyEmail = $this->resolveVerifyEmailOption();
         $dryRun = (bool) $this->option('dry-run');
+        $avatarsRequested = $this->resolveAvatarGenerationOption();
+        $generateAvatars = $avatarsRequested && !$dryRun;
         $reporter = GenerationRunReporter::fromOption($this->option('run-id'));
 
         $languageCounts = $this->allocateCounts($total, $languages);
 
         $this->info(sprintf(
-            'Generating %d bots (batch=%d, languages=%s, countries=%s).',
+            'Generating %d bots (batch=%d, languages=%s, countries=%s, avatars=%s).',
             $total,
             $batchSize,
             implode(', ', $languages),
             implode(', ', $countries),
+            $avatarsRequested ? 'on' : 'off',
         ));
 
         if ($dryRun) {
             $this->info('Dry run mode: no users will be saved.');
+            if ($avatarsRequested) {
+                $this->info('Avatar generation is enabled, but skipped in dry-run mode.');
+            }
         }
 
         $progress = $this->output->createProgressBar($total);
@@ -119,9 +136,15 @@ class GenerateBotUsers extends Command
             'countries' => $countries,
             'created_count' => 0,
             'dry_run' => $dryRun,
+            'with_avatars' => $avatarsRequested,
+            'avatars_generated_count' => 0,
+            'avatars_failed_count' => 0,
+            'avatar_prompt_planner' => $generateAvatars,
         ]);
 
         $created = 0;
+        $avatarsGenerated = 0;
+        $avatarsFailed = 0;
         $countryIndex = 0;
 
         foreach ($languageCounts as $language => $languageTotal) {
@@ -195,10 +218,10 @@ class GenerateBotUsers extends Command
                     ));
                 }
 
-                $processedInBatch = 0;
+                $preparedEntries = [];
 
                 foreach ($items as $item) {
-                    if ($processedInBatch >= $requestedCount || $remaining < 1) {
+                    if (count($preparedEntries) >= $requestedCount || $remaining < 1) {
                         break;
                     }
 
@@ -211,6 +234,25 @@ class GenerateBotUsers extends Command
                     $country = $this->pickCountry($countries, $countryIndex);
                     $countryIndex++;
 
+                    $preparedEntries[] = [
+                        'bot' => $bot,
+                        'country' => $country,
+                    ];
+                }
+
+                $processedInBatch = 0;
+                $avatarPlanInputs = [];
+                $avatarPlans = [];
+
+                if ($generateAvatars && $preparedEntries !== []) {
+                    $avatarPlanInputs = $this->buildAvatarPlanInputs($preparedEntries, $language, $avatarGenerator);
+                    $avatarPlans = $avatarPromptPlanner->planBatch($avatarPlanInputs, $language);
+                }
+
+                foreach ($preparedEntries as $slot => $entry) {
+                    $bot = $entry['bot'];
+                    $country = $entry['country'];
+
                     if ($dryRun) {
                         $this->line($this->formatPreview($bot, $language, $country));
                         $created++;
@@ -219,6 +261,8 @@ class GenerateBotUsers extends Command
                         $progress->advance();
                         $reporter->setProgress($created, null, [
                             'created_count' => $created,
+                            'avatars_generated_count' => $avatarsGenerated,
+                            'avatars_failed_count' => $avatarsFailed,
                             'current_language' => $language,
                             'last_country' => $country,
                         ]);
@@ -227,12 +271,35 @@ class GenerateBotUsers extends Command
 
                     $user = $this->createBotUser($bot, $language, $country, $verifyEmail, $emailDomain, $password);
                     if ($user) {
+                        if ($generateAvatars) {
+                            $fallbackPlan = $avatarPlanInputs[$slot] ?? [];
+                            $avatarPlan = array_merge($fallbackPlan, $avatarPlans[$slot] ?? []);
+                            if (isset($fallbackPlan['avatar_type'])) {
+                                $avatarPlan['avatar_type'] = (string) $fallbackPlan['avatar_type'];
+                            }
+                            $avatarSaved = $this->assignGeneratedAvatar(
+                                $user,
+                                $bot,
+                                $language,
+                                $country,
+                                $avatarGenerator,
+                                $avatarPlan,
+                            );
+                            if ($avatarSaved) {
+                                $avatarsGenerated++;
+                            } else {
+                                $avatarsFailed++;
+                            }
+                        }
+
                         $created++;
                         $processedInBatch++;
                         $remaining--;
                         $progress->advance();
                         $reporter->setProgress($created, null, [
                             'created_count' => $created,
+                            'avatars_generated_count' => $avatarsGenerated,
+                            'avatars_failed_count' => $avatarsFailed,
                             'current_language' => $language,
                             'last_country' => $country,
                         ]);
@@ -259,11 +326,23 @@ class GenerateBotUsers extends Command
         $this->newLine(2);
         $label = $dryRun ? 'Previewed' : 'Created';
         $this->info("{$label} {$created} bot users.");
+        if ($generateAvatars) {
+            $this->line(sprintf(
+                'Avatars: generated %d, failed %d.',
+                $avatarsGenerated,
+                $avatarsFailed,
+            ));
+        }
         $reporter->merge([
             'created_count' => $created,
+            'avatars_generated_count' => $avatarsGenerated,
+            'avatars_failed_count' => $avatarsFailed,
         ], [
             'created_count' => $created,
             'dry_run' => $dryRun,
+            'with_avatars' => $avatarsRequested,
+            'avatars_generated_count' => $avatarsGenerated,
+            'avatars_failed_count' => $avatarsFailed,
         ]);
 
         return self::SUCCESS;
@@ -548,6 +627,67 @@ class GenerateBotUsers extends Command
         return $countries[$position];
     }
 
+    private function buildAvatarPlanInputs(
+        array $preparedEntries,
+        string $language,
+        BotAvatarGenerator $avatarGenerator
+    ): array
+    {
+        $types = $this->allocateAvatarTypes(count($preparedEntries));
+        $inputs = [];
+
+        foreach ($preparedEntries as $slot => $entry) {
+            $bot = $entry['bot'] ?? [];
+            $avatarType = $types[$slot] ?? 'non_face';
+            $country = strtoupper((string) ($entry['country'] ?? self::DEFAULT_COUNTRIES[0]));
+            $diversityKey = strtoupper(Str::random(8));
+            $inputs[$slot] = [
+                'slot' => $slot,
+                'avatar_type' => $avatarType,
+                'language' => strtoupper($language),
+                'country' => $country,
+                'gender' => (string) ($bot['gender'] ?? ''),
+                'age' => (int) ($bot['age'] ?? 0),
+                'character' => (string) ($bot['character'] ?? ''),
+                'speech_style' => (string) ($bot['speech_style'] ?? ''),
+                'diversity_key' => $diversityKey,
+            ];
+
+            $inputs[$slot] = array_merge(
+                $inputs[$slot],
+                $avatarGenerator->buildSeedPlan($avatarType, $language, $country, $diversityKey)
+            );
+        }
+
+        return $inputs;
+    }
+
+    private function allocateAvatarTypes(int $count): array
+    {
+        if ($count < 1) {
+            return [];
+        }
+
+        $ratio = (float) $this->setting(
+            'profile.bot_generation.avatar_face_ratio',
+            (float) config('backpack.profile.bot_generation.avatar_face_ratio', 0.4)
+        );
+        $ratio = max(0.0, min(1.0, $ratio));
+
+        $faceCount = (int) round($count * $ratio);
+        $faceCount = max(0, min($count, $faceCount));
+        $nonFaceCount = max(0, $count - $faceCount);
+
+        $types = array_merge(
+            array_fill(0, $faceCount, 'face'),
+            array_fill(0, $nonFaceCount, 'non_face'),
+        );
+
+        shuffle($types);
+
+        return $types;
+    }
+
     private function resolveVerifyEmailOption(): bool
     {
         if ($this->option('unverified')) {
@@ -559,6 +699,77 @@ class GenerateBotUsers extends Command
         }
 
         return true;
+    }
+
+    private function resolveAvatarGenerationOption(): bool
+    {
+        if ($this->option('without-avatars')) {
+            return false;
+        }
+
+        if ($this->option('with-avatars')) {
+            return true;
+        }
+
+        return (bool) $this->setting(
+            'profile.bot_generation.generate_avatars_by_default',
+            (bool) config('backpack.profile.bot_generation.generate_avatars_by_default', true)
+        );
+    }
+
+    private function assignGeneratedAvatar(
+        object $user,
+        array $bot,
+        string $language,
+        string $country,
+        BotAvatarGenerator $avatarGenerator,
+        ?array $avatarPlan = null
+    ): bool {
+        try {
+            $avatar = $avatarGenerator->generate($bot, $language, $country, $avatarPlan);
+        } catch (\Throwable $exception) {
+            $this->warn('Failed to generate avatar: ' . $exception->getMessage());
+            return false;
+        }
+
+        $avatarUrl = is_array($avatar) ? trim((string) ($avatar['url'] ?? '')) : '';
+        if ($avatarUrl === '') {
+            return false;
+        }
+
+        try {
+            if (method_exists($user, 'loadMissing')) {
+                $user->loadMissing('profile');
+            } elseif (method_exists($user, 'load')) {
+                $user->load('profile');
+            }
+
+            $profile = $user->profile ?? null;
+            if (!$profile) {
+                return false;
+            }
+
+            $profile->avatar_url = $avatarUrl;
+            $metaOther = array_filter([
+                'avatar_source' => 'bot-ai-avatar',
+                'avatar_path' => $avatar['path'] ?? null,
+                'avatar_ai_type' => $avatar['type'] ?? null,
+                'avatar_ai_driver' => $avatar['driver'] ?? null,
+                'avatar_ai_model' => $avatar['model'] ?? null,
+                'avatar_ai_key' => $avatarPlan['diversity_key'] ?? null,
+            ], fn ($value) => $value !== null && $value !== '');
+
+            if ($metaOther !== []) {
+                $profile->mergeMeta(['other' => $metaOther]);
+            }
+
+            $profile->save();
+
+            return true;
+        } catch (\Throwable $exception) {
+            $this->warn('Failed to save generated avatar: ' . $exception->getMessage());
+            return false;
+        }
     }
 
     private function normalizeLanguageCode(?string $value): ?string
@@ -699,5 +910,14 @@ class GenerateBotUsers extends Command
         ];
 
         return json_encode($payload, JSON_UNESCAPED_UNICODE);
+    }
+
+    private function setting(string $key, mixed $default): mixed
+    {
+        try {
+            return \Settings::get($key, $default);
+        } catch (\Throwable) {
+            return $default;
+        }
     }
 }

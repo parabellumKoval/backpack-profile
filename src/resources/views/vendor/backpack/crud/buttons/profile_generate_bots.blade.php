@@ -31,6 +31,20 @@
         'backpack.profile.bot_generation.default_password',
         config('profile.bot_generation.default_password', 'bot228vivadzen')
     );
+    try {
+        $defaultWithAvatars = (bool) \Settings::get(
+            'profile.bot_generation.generate_avatars_by_default',
+            config(
+                'backpack.profile.bot_generation.generate_avatars_by_default',
+                config('profile.bot_generation.generate_avatars_by_default', true)
+            )
+        );
+    } catch (\Throwable) {
+        $defaultWithAvatars = (bool) config(
+            'backpack.profile.bot_generation.generate_avatars_by_default',
+            config('profile.bot_generation.generate_avatars_by_default', true)
+        );
+    }
 @endphp
 
 <button type="button" class="btn btn-primary" id="open-bot-generation-modal">
@@ -96,6 +110,12 @@
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="bot_generation_verified" checked>
                                 <label class="form-check-label" for="bot_generation_verified">Подтверждать email</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="bot_generation_with_avatars" @if($defaultWithAvatars) checked @endif>
+                                <label class="form-check-label" for="bot_generation_with_avatars">Генерировать аватарки (nanoBanana, 200x200)</label>
                             </div>
                         </div>
                         <div class="col-md-4 mb-2">
@@ -313,6 +333,7 @@
             password: $('#bot_generation_password').val() || null,
             email_domain: $('#bot_generation_email_domain').val() || null,
             verified: $('#bot_generation_verified').is(':checked') ? 1 : 0,
+            with_avatars: $('#bot_generation_with_avatars').is(':checked') ? 1 : 0,
             dry_run: $('#bot_generation_dry_run').is(':checked') ? 1 : 0,
         };
     }
