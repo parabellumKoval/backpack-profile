@@ -70,6 +70,39 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                         );
                 })
 
+                ->page('Накопительная скидка', function ($page) use ($currencyOptionsFiat) {
+                    $page
+                        ->add(
+                            Field::make('profile.loyalty.enabled', 'checkbox')
+                                ->label('Включить накопительную скидку')
+                                ->default(false)
+                                ->cast('bool')
+                                ->hint('Если включено, скидка профиля будет автоматически пересчитываться по сумме завершённых заказов.')
+                                ->tab('Общее')
+                        )
+                        ->add(
+                            Field::make('profile.loyalty.base_currency', 'select_from_array')
+                                ->label('Валюта порогов')
+                                ->options($currencyOptionsFiat)
+                                ->default((string) config('dress.store.base_currency', 'USD'))
+                                ->cast('string')
+                                ->hint('Пороги уровней задаются в этой валюте. Для стабильного расчёта лучше использовать базовую валюту магазина.')
+                                ->tab('Общее')
+                        )
+                        ->add(
+                            Field::make('profile.loyalty.levels', 'repeatable_pure')
+                                ->label('Уровни скидки')
+                                ->cast('array')
+                                ->fields([
+                                    ['name' => 'name', 'type' => 'text', 'label' => 'Название', 'wrapper' => ['class' => 'form-group col-md-4']],
+                                    ['name' => 'amount_from', 'type' => 'number', 'label' => 'Сумма от', 'cast' => 'float', 'attributes' => ['min' => 0, 'step' => '0.01'], 'wrapper' => ['class' => 'form-group col-md-4']],
+                                    ['name' => 'discount_percent', 'type' => 'number', 'label' => 'Скидка %', 'cast' => 'float', 'attributes' => ['min' => 0, 'max' => 100, 'step' => '0.01'], 'wrapper' => ['class' => 'form-group col-md-4']],
+                                ])
+                                ->hint('Система выбирает максимальный уровень, порог которого не превышает сумму завершённых заказов. В зачёт идёт сумма заказа без доставки и налогов.')
+                                ->tab('Уровни')
+                        );
+                })
+
                 // -------------------- Страница "Реферальная система"
                 ->page('Реферальная система', function ($page) use ($currencyOptions, $currencyOptionsFiat) {
                     // Глобальные настройки рефералок
