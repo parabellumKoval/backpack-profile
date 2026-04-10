@@ -7,6 +7,7 @@ use Backpack\Settings\Services\Registry\Field;
 
 use Backpack\Profile\app\Services\TriggerRegistry;
 use Backpack\Profile\app\Contracts\ReferralTrigger;
+use Backpack\Store\app\Services\Store;
 
 class ProfileSettingsRegistrar implements SettingsRegistrarInterface
 {
@@ -20,12 +21,13 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
         // Валюты для select (VIVAPOINTS + ISO)
         $currencyOptions = \Profile::currencyOptions();
         $currencyOptionsFiat = \Profile::currencyOptions(true);
+        $storefrontOptions = Store::storefrontOptions();
 
-        $registry->group('profile', function ($group) use ($triggers, $currencyOptions, $currencyOptionsFiat) {
+        $registry->group('profile', function ($group) use ($triggers, $currencyOptions, $currencyOptionsFiat, $storefrontOptions) {
             $group->title('Настройки профиля')->icon('la la-user-cog')
 
                 // -------------------- Страница "Пользователи"
-                ->page('Пользователи', function ($page) {
+                ->page('Пользователи', function ($page) use ($storefrontOptions) {
                     $page
                         ->add(
                             Field::make('profile.users.allow_registration', 'checkbox')
@@ -36,12 +38,30 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                                 ->tab('Общее')
                         )
                         ->add(
+                            Field::make('profile.users.allow_registration.disabled_storefronts', 'select2_from_array')
+                                ->label('Storefront без регистрации')
+                                ->options($storefrontOptions)
+                                ->allows_multiple(true)
+                                ->cast('array')
+                                ->hint('На выбранных storefront самостоятельная регистрация будет отключена.')
+                                ->tab('Storefront')
+                        )
+                        ->add(
                             Field::make('profile.users.require_email_verification', 'checkbox')
                                 ->label('Требовать подтверждение email')
                                 ->default(true)
                                 ->cast('bool')
                                 ->hint('При включении новые пользователи должны подтвердить email перед входом.')
                                 ->tab('Общее')
+                        )
+                        ->add(
+                            Field::make('profile.users.require_email_verification.disabled_storefronts', 'select2_from_array')
+                                ->label('Storefront без подтверждения email')
+                                ->options($storefrontOptions)
+                                ->allows_multiple(true)
+                                ->cast('array')
+                                ->hint('На выбранных storefront требование подтверждения email будет отключено.')
+                                ->tab('Storefront')
                         )
                         ->add(
                             Field::make('profile.users.default_role', 'text')
@@ -67,10 +87,19 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                                 ->cast('bool')
                                 ->hint('Если включено при оформлении заказа будет учтена персональная скидка пользователя (если она имеется)')
                                 ->tab('Другое')
+                        )
+                        ->add(
+                            Field::make('profile.users.allow_personal_discount.disabled_storefronts', 'select2_from_array')
+                                ->label('Storefront без персональных скидок')
+                                ->options($storefrontOptions)
+                                ->allows_multiple(true)
+                                ->cast('array')
+                                ->hint('На выбранных storefront персональные скидки не применяются в checkout.')
+                                ->tab('Storefront')
                         );
                 })
 
-                ->page('Накопительная скидка', function ($page) use ($currencyOptionsFiat) {
+                ->page('Накопительная скидка', function ($page) use ($currencyOptionsFiat, $storefrontOptions) {
                     $page
                         ->add(
                             Field::make('profile.loyalty.enabled', 'checkbox')
@@ -79,6 +108,15 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                                 ->cast('bool')
                                 ->hint('Если включено, скидка профиля будет автоматически пересчитываться по сумме завершённых заказов.')
                                 ->tab('Общее')
+                        )
+                        ->add(
+                            Field::make('profile.loyalty.disabled_storefronts', 'select2_from_array')
+                                ->label('Storefront вне накопительной системы')
+                                ->options($storefrontOptions)
+                                ->allows_multiple(true)
+                                ->cast('array')
+                                ->hint('Заказы с выбранных storefront не участвуют в накопительной скидке.')
+                                ->tab('Storefront')
                         )
                         ->add(
                             Field::make('profile.loyalty.base_currency', 'select_from_array')
@@ -104,7 +142,7 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                 })
 
                 // -------------------- Страница "Реферальная система"
-                ->page('Реферальная система', function ($page) use ($currencyOptions, $currencyOptionsFiat) {
+                ->page('Реферальная система', function ($page) use ($currencyOptions, $currencyOptionsFiat, $storefrontOptions) {
                     // Глобальные настройки рефералок
                     $page
                         ->add(
@@ -113,6 +151,15 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                                 ->default(true)
                                 ->cast('bool')
                                 ->tab('Глобальные')
+                        )
+                        ->add(
+                            Field::make('profile.referrals.disabled_storefronts', 'select2_from_array')
+                                ->label('Storefront без реферальных начислений')
+                                ->options($storefrontOptions)
+                                ->allows_multiple(true)
+                                ->cast('array')
+                                ->hint('На выбранных storefront реферальные начисления и триггеры будут отключены.')
+                                ->tab('Storefront')
                         )
                         ->add(
                             Field::make('profile.referrals.url_param', 'text')
@@ -149,7 +196,7 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                         );
                 })
 
-                ->page('Бонусный счет', function ($page) use ($currencyOptions, $currencyOptionsFiat) {
+                ->page('Бонусный счет', function ($page) use ($currencyOptions, $currencyOptionsFiat, $storefrontOptions) {
                     // Глобальные настройки рефералок
                     $page
                         ->add(
@@ -158,6 +205,15 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                                 ->default(true)
                                 ->cast('bool')
                                 ->tab('Глобальные')
+                        )
+                        ->add(
+                            Field::make('profile.pay_for_order.disabled_storefronts', 'select2_from_array')
+                                ->label('Storefront без оплаты бонусами')
+                                ->options($storefrontOptions)
+                                ->allows_multiple(true)
+                                ->cast('array')
+                                ->hint('На выбранных storefront нельзя списывать бонусы в checkout.')
+                                ->tab('Storefront')
                         )
                         ->add(
                             Field::make('profile.referrals.default_currency', 'select_from_array')
@@ -429,7 +485,7 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                     );
                 })
 
-                ->page('Тригеры', function ($page) use ($triggers, $currencyOptions, $currencyOptionsFiat) {
+                ->page('Тригеры', function ($page) use ($triggers, $currencyOptions, $currencyOptionsFiat, $storefrontOptions) {
                     // Динамические вкладки по зарегистрированным триггерам
                     foreach ($triggers as $alias => $class) {
                         /** @var class-string<ReferralTrigger> $class */
@@ -447,6 +503,16 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                                     ->cast('bool')
                                     ->hint(trim("Триггер: {$alias}" . ($desc ? " — {$desc}" : '')))
                                     ->tab($tab)
+                        );
+
+                        $page->add(
+                            Field::make("{$baseKey}.disabled_storefronts", 'select2_from_array')
+                                ->label('Отключить на storefront')
+                                ->options($storefrontOptions)
+                                ->allows_multiple(true)
+                                ->cast('array')
+                                ->hint('На выбранных storefront этот триггер не будет создавать начисления.')
+                                ->tab($tab)
                         );
 
                         // Тип начисления (процент допустим только если supports_percent)

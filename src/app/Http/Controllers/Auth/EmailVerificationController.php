@@ -14,6 +14,9 @@ class EmailVerificationController extends Controller
         if ($r->user()->hasVerifiedEmail()) {
             return response()->json(['message' => 'Already verified'], 200);
         }
+        if (method_exists($r->user(), 'rememberPreferredStorefront')) {
+            $r->user()->rememberPreferredStorefront();
+        }
         $r->user()->sendEmailVerificationNotification();
         return response()->json(['ok' => true]);
     }
@@ -52,6 +55,9 @@ class EmailVerificationController extends Controller
         if ($user) {
             // если уже верифицирован — просто вернём ok (не раскрываем состояние)
             if (method_exists($user, 'hasVerifiedEmail') ? !$user->hasVerifiedEmail() : empty($user->email_verified_at)) {
+                if (method_exists($user, 'rememberPreferredStorefront')) {
+                    $user->rememberPreferredStorefront();
+                }
                 $user->sendEmailVerificationNotification();
             }
         }
@@ -62,7 +68,16 @@ class EmailVerificationController extends Controller
 
     protected function buildVerificationRedirectUrl(Request $request, $user, string $hash): ?string
     {
-        $baseUrl = \Settings::get('profile.email_verify_redirect', config('profile.email_verify_redirect'));
+        $defaultBaseUrl = \Settings::get('profile.email_verify_redirect', config('profile.email_verify_redirect'));
+        $storefront = $request->query('storefront');
+
+        if (!$storefront && method_exists($user, 'preferredStorefrontCode')) {
+            $storefront = $user->preferredStorefrontCode();
+        }
+
+        $baseUrl = method_exists($user, 'storefrontFrontendUrl')
+            ? $user::storefrontFrontendUrl($storefront, $defaultBaseUrl)
+            : $defaultBaseUrl;
 
         if (empty($baseUrl)) {
             return null;

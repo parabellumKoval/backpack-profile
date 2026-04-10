@@ -5,6 +5,7 @@ use Backpack\Profile\app\Events\RewardLedgerEntryCreated;
 use Backpack\Profile\app\Models\Reward;
 use Backpack\Profile\app\Models\RewardEvent;
 use Backpack\Profile\app\Models\WalletLedger;
+use Backpack\Profile\app\Support\StorefrontFeatureGate;
 use Illuminate\Support\Facades\DB;
 use Backpack\Profile\app\Services\CurrencyConverter;
 
@@ -85,8 +86,23 @@ class ReferralService
         ]);
 
         try {
+            $payload = $event->payload ? json_decode($event->payload, true) : [];
+            $storefront = (string) ($payload['storefront_code'] ?? $payload['storefront'] ?? '');
+
+            if (!app(StorefrontFeatureGate::class)->featureEnabled('profile.referrals', true, $storefront)) {
+                DB::table('ak_reward_events')->where('id',$eventId)
+                    ->update(['status'=>'processed','processed_at'=>now()]);
+                return;
+            }
+
             $cfg  = \Settings::get("profile.referrals.triggers.{$event->trigger}", []);
             if (empty($cfg['enabled'])) {
+                DB::table('ak_reward_events')->where('id',$eventId)
+                    ->update(['status'=>'processed','processed_at'=>now()]);
+                return;
+            }
+
+            if (!app(StorefrontFeatureGate::class)->featureEnabled("profile.referrals.triggers.{$event->trigger}", true, $storefront)) {
                 DB::table('ak_reward_events')->where('id',$eventId)
                     ->update(['status'=>'processed','processed_at'=>now()]);
                 return;
@@ -99,7 +115,6 @@ class ReferralService
                 return;
             }
 
-            $payload = $event->payload ? json_decode($event->payload, true) : [];
             $base = $trigger->baseAmount($payload);
 
             $baseAmount   = (float)($base['amount'] ?? 0);

@@ -45,8 +45,11 @@ class ProfileController extends \App\Http\Controllers\Controller
 
     public function update(Request $request) {
 
-      // Get user instance from AUTH guard
-      $user = Auth::guard('profile')->user();
+      $user = $request->user() ?? Auth::guard('profile')->user();
+
+      if(!$user) {
+        return response()->json(['message' => 'Unauthorized'], 401);
+      }
 
       $profile = $user->profile;
 
@@ -57,7 +60,8 @@ class ProfileController extends \App\Http\Controllers\Controller
       $rules = array_merge(
         $this->prepareProfileRules($request),
         $this->addressValidationRules('billing'),
-        $this->addressValidationRules('shipping')
+        $this->addressValidationRules('shipping'),
+        $this->savedDeliveryAddressValidationRules()
       );
 
       $validator = Validator::make($request->all(), $rules);
@@ -91,12 +95,16 @@ class ProfileController extends \App\Http\Controllers\Controller
           $profile->shipping = $this->sanitizeAddress($payload['shipping'] ?? []);
         }
 
+        if ($request->exists('saved_delivery_addresses')) {
+          $profile->setSavedDeliveryAddresses($this->sanitizeSavedDeliveryAddresses($payload['saved_delivery_addresses'] ?? []));
+        }
+
         $profile->save();
       }catch(\Exception $e){
         return response()->json($e->getMessage(), 400);
       }
 
-      return response()->json($profile);
+      return response()->json($profile->fresh());
     }
 
     protected function prepareProfileRules(Request $request): array
@@ -156,12 +164,36 @@ class ProfileController extends \App\Http\Controllers\Controller
       return $normalized;
     }
 
+    protected function savedDeliveryAddressValidationRules(): array
+    {
+      $rules = [
+        'saved_delivery_addresses' => ['nullable', 'array'],
+      ];
+
+      foreach (Profile::DELIVERY_ADDRESS_KEYS as $key) {
+        $fieldRules = ['nullable', 'string', 'max:255'];
+
+        if (in_array($key, ['created_at', 'updated_at'], true)) {
+          $fieldRules = ['nullable', 'date'];
+        }
+
+        $rules["saved_delivery_addresses.*.{$key}"] = $fieldRules;
+      }
+
+      return $rules;
+    }
+
+    protected function sanitizeSavedDeliveryAddresses(?array $addresses): array
+    {
+      return Profile::normalizeSavedDeliveryAddresses(is_array($addresses) ? $addresses : []);
+    }
+
 
     public function referrals(Request $request) {
       // $profile = Auth::guard('profile')->user();
       $user = $request->user();
 
-      if($user->profile)
+      if(!$user || !$user->profile)
         return response()->json('Profile not found, access denied', 403);
 
       $referrals = $user->profile->referrals()->paginate(12);

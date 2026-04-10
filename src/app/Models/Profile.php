@@ -9,6 +9,7 @@ use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Backpack\Store\app\Services\Store;
 use Backpack\Helpers\Traits\FormatsUniqAttribute;
 use Backpack\Profile\app\Support\ProfileRoles;
 
@@ -55,6 +56,28 @@ class Profile extends Authenticatable
         'city',
         'state',
         'country',
+    ];
+
+    public const DELIVERY_ADDRESS_KEYS = [
+        'id',
+        'title',
+        'country',
+        'method',
+        'settlement',
+        'settlementRef',
+        'region',
+        'area',
+        'street',
+        'streetRef',
+        'type',
+        'house',
+        'room',
+        'zip',
+        'warehouse',
+        'warehouseRef',
+        'fingerprint',
+        'created_at',
+        'updated_at',
     ];
 
     public static $fields = [
@@ -155,7 +178,9 @@ class Profile extends Authenticatable
             'role_label' => $this->role_label,
             'role_data' => $this->rolePayload(),
             'billing' => static::fillAddress($this->getMetaSection('billing')),
-            'shipping' => static::fillAddress($this->getMetaSection('shipping')),
+            'shipping' => static::fillAddress($this->shipping),
+            'saved_delivery_addresses' => $this->savedDeliveryAddresses(),
+            'storefront' => $this->currentStorefrontCode(),
             'meta' => $this->metaWithoutOther(),
         ];
     }
@@ -475,13 +500,21 @@ class Profile extends Authenticatable
             return $value;
         }
 
+        $storefront = $this->currentStorefrontCode();
+        if ($storefront !== null) {
+            $scoped = $this->getMetaSection("shipping_by_storefront.{$storefront}");
+            if ($scoped !== []) {
+                return $scoped;
+            }
+        }
+
         return $this->getMetaSection('shipping');
     }
 
     public function setShippingAttribute($value): void
     {
         $normalized = static::normalizeAddress(is_array($value) ? $value : []);
-        $this->setMetaSection('shipping', $normalized);
+        $this->setScopedShippingAddress($normalized, $this->currentStorefrontCode());
     }
 
     public function roleDefinition(): ?array
@@ -556,6 +589,175 @@ class Profile extends Authenticatable
         $this->meta = $meta ?: null;
     }
 
+    public function currentStorefrontCode(): ?string
+    {
+        return Store::normalizeStorefrontCode(Store::storefront());
+    }
+
+    public function savedDeliveryAddresses(?string $storefront = null): array
+    {
+        $resolvedStorefront = $this->resolveStorefrontCode($storefront);
+        $addresses = $resolvedStorefront !== null
+            ? $this->getMetaSection("delivery_addresses_by_storefront.{$resolvedStorefront}")
+            : [];
+
+        if ($addresses === []) {
+            $addresses = $this->getMetaSection('delivery_addresses');
+        }
+
+        return static::normalizeSavedDeliveryAddresses(is_array($addresses) ? $addresses : [], $resolvedStorefront);
+    }
+
+    public function setSavedDeliveryAddresses(array $addresses, ?string $storefront = null): void
+    {
+        $resolvedStorefront = $this->resolveStorefrontCode($storefront);
+        $normalized = static::normalizeSavedDeliveryAddresses($addresses, $resolvedStorefront);
+
+        $meta = $this->meta ?? [];
+        $meta = is_array($meta) ? $meta : [];
+
+        if ($resolvedStorefront !== null) {
+            Arr::set($meta, "delivery_addresses_by_storefront.{$resolvedStorefront}", $normalized);
+        } else {
+            $meta['delivery_addresses'] = $normalized;
+        }
+
+        $this->meta = $meta ?: null;
+    }
+
+    public function syncDeliveryAddress(
+        array $delivery,
+        array $contact = [],
+        ?string $storefront = null,
+        ?string $country = null
+    ): ?array {
+        $resolvedStorefront = $this->resolveStorefrontCode($storefront);
+        $shippingAddress = static::profileAddressFromDelivery($delivery, $contact, $country);
+        if ($shippingAddress !== []) {
+            $this->setScopedShippingAddress($shippingAddress, $resolvedStorefront);
+        }
+
+        $candidate = static::normalizeSavedDeliveryAddress($delivery, $resolvedStorefront, $country);
+        if ($candidate === null) {
+            return null;
+        }
+
+        $addresses = $this->savedDeliveryAddresses($resolvedStorefront);
+        $existing = null;
+
+        foreach ($addresses as $index => $address) {
+            if (($address['fingerprint'] ?? null) === ($candidate['fingerprint'] ?? null)) {
+                $existing = $address;
+                unset($addresses[$index]);
+                break;
+            }
+        }
+
+        $timestamp = now()->toIso8601String();
+        $candidate['id'] = $existing['id'] ?? ($candidate['id'] ?? (string) Str::uuid());
+        $candidate['created_at'] = $existing['created_at'] ?? $candidate['created_at'] ?? $timestamp;
+        $candidate['updated_at'] = $timestamp;
+
+        array_unshift($addresses, $candidate);
+        $this->setSavedDeliveryAddresses(array_slice(array_values($addresses), 0, 20), $resolvedStorefront);
+
+        return $candidate;
+    }
+
+    public static function normalizeSavedDeliveryAddresses(array $addresses, ?string $storefront = null): array
+    {
+        $normalized = [];
+
+        foreach ($addresses as $address) {
+            $candidate = static::normalizeSavedDeliveryAddress(is_array($address) ? $address : [], $storefront);
+            if ($candidate === null) {
+                continue;
+            }
+
+            $normalized[] = $candidate;
+        }
+
+        return array_values($normalized);
+    }
+
+    public static function normalizeSavedDeliveryAddress(
+        array $address,
+        ?string $storefront = null,
+        ?string $country = null
+    ): ?array {
+        $normalized = [];
+
+        foreach (self::DELIVERY_ADDRESS_KEYS as $key) {
+            $value = Arr::get($address, $key);
+
+            if (is_string($value)) {
+                $value = trim($value);
+            }
+
+            if ($value === '' || $value === null) {
+                continue;
+            }
+
+            $normalized[$key] = (string) $value;
+        }
+
+        $normalized['method'] = trim((string) ($normalized['method'] ?? ''));
+        $normalized['country'] = strtoupper((string) ($normalized['country'] ?? $country ?? Store::country()));
+
+        if ($normalized['method'] === '') {
+            if (!empty($normalized['warehouse'])) {
+                $normalized['method'] = 'default_pickup';
+            } elseif (!empty($normalized['street'])) {
+                $normalized['method'] = 'default_address';
+            }
+        }
+
+        if ($normalized['method'] === '') {
+            return null;
+        }
+
+        if (
+            empty($normalized['warehouse'])
+            && empty($normalized['street'])
+            && empty($normalized['settlement'])
+            && empty($normalized['zip'])
+        ) {
+            return null;
+        }
+
+        $resolvedStorefront = Store::normalizeStorefrontCode($storefront);
+
+        if (empty($normalized['title'])) {
+            $normalized['title'] = static::buildSavedDeliveryAddressTitle($normalized);
+        }
+
+        $normalized['fingerprint'] = static::savedDeliveryAddressFingerprint($normalized, $resolvedStorefront);
+
+        return $normalized;
+    }
+
+    public static function profileAddressFromDelivery(array $delivery, array $contact = [], ?string $country = null): array
+    {
+        $addressLine = trim(implode(', ', array_filter([
+            Arr::get($delivery, 'warehouse'),
+            trim(implode(' ', array_filter([
+                Arr::get($delivery, 'street'),
+                Arr::get($delivery, 'house'),
+                Arr::get($delivery, 'room'),
+            ]))),
+        ])));
+
+        return static::normalizeAddress([
+            'email' => $contact['email'] ?? null,
+            'phone' => $contact['phone'] ?? null,
+            'address_1' => $addressLine,
+            'postcode' => Arr::get($delivery, 'zip'),
+            'city' => Arr::get($delivery, 'settlement'),
+            'state' => Arr::get($delivery, 'region') ?? Arr::get($delivery, 'area'),
+            'country' => $country ?? Store::country(),
+        ]);
+    }
+
     protected function setMetaSection(string $section, array $data): void
     {
         $meta = $this->meta ?? [];
@@ -568,6 +770,74 @@ class Profile extends Authenticatable
         }
 
         $this->meta = $meta ?: null;
+    }
+
+    protected function setScopedShippingAddress(array $data, ?string $storefront = null): void
+    {
+        $normalized = static::normalizeAddress($data);
+        $meta = $this->meta ?? [];
+        $meta = is_array($meta) ? $meta : [];
+
+        $resolvedStorefront = $this->resolveStorefrontCode($storefront);
+        if ($resolvedStorefront !== null) {
+            if ($normalized === []) {
+                Arr::forget($meta, "shipping_by_storefront.{$resolvedStorefront}");
+            } else {
+                Arr::set($meta, "shipping_by_storefront.{$resolvedStorefront}", $normalized);
+            }
+        }
+
+        if ($normalized === []) {
+            unset($meta['shipping']);
+        } else {
+            $meta['shipping'] = $normalized;
+        }
+
+        $this->meta = $meta ?: null;
+    }
+
+    protected function resolveStorefrontCode(?string $storefront = null): ?string
+    {
+        if ($storefront !== null && $storefront !== '') {
+            return Store::normalizeStorefrontCode($storefront);
+        }
+
+        return $this->currentStorefrontCode();
+    }
+
+    protected static function buildSavedDeliveryAddressTitle(array $address): string
+    {
+        $headline = trim(implode(', ', array_filter([
+            $address['settlement'] ?? null,
+            $address['warehouse'] ?? null,
+            trim(implode(' ', array_filter([
+                $address['street'] ?? null,
+                $address['house'] ?? null,
+            ]))),
+            $address['zip'] ?? null,
+        ])));
+
+        return $headline !== '' ? $headline : Str::headline((string) ($address['method'] ?? 'delivery'));
+    }
+
+    protected static function savedDeliveryAddressFingerprint(array $address, ?string $storefront = null): string
+    {
+        $payload = [
+            'storefront' => $storefront,
+            'country' => strtoupper((string) ($address['country'] ?? '')),
+            'method' => strtolower((string) ($address['method'] ?? '')),
+            'settlement' => strtolower((string) ($address['settlement'] ?? '')),
+            'region' => strtolower((string) ($address['region'] ?? '')),
+            'area' => strtolower((string) ($address['area'] ?? '')),
+            'street' => strtolower((string) ($address['street'] ?? '')),
+            'house' => strtolower((string) ($address['house'] ?? '')),
+            'room' => strtolower((string) ($address['room'] ?? '')),
+            'zip' => strtolower((string) ($address['zip'] ?? '')),
+            'warehouse' => strtolower((string) ($address['warehouse'] ?? '')),
+            'warehouse_ref' => strtolower((string) ($address['warehouseRef'] ?? '')),
+        ];
+
+        return sha1(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     protected static function normalizeAddress(?array $address): array

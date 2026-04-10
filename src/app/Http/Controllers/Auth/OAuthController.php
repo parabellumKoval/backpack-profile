@@ -8,6 +8,7 @@ use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Backpack\Store\app\Services\Store;
 use ParabellumKoval\BackpackImages\Exceptions\ImageUploadException;
 use ParabellumKoval\BackpackImages\Services\ImageUploader;
 use ParabellumKoval\BackpackImages\Support\ImageUploadOptions;
@@ -36,11 +37,20 @@ class OAuthController extends Controller
 
         $referrerCode = $r->query($key, null);
         $redirectToFrontendUrl = $r->query('redirect_uri', null);
+        $storefront = Store::normalizeStorefrontCode(
+            $r->query('storefront')
+            ?? $r->header(Store::storefrontHeaderName())
+            ?? $r->get(Store::storefrontRequestKey())
+        );
             
         $url = Socialite::driver($provider)
             ->stateless()
             ->with([
-                'state' => "referrer_code={$referrerCode}&redirect_to={$redirectToFrontendUrl}"
+                'state' => http_build_query([
+                    'referrer_code' => $referrerCode,
+                    'redirect_to' => $redirectToFrontendUrl,
+                    'storefront' => $storefront,
+                ]),
             ])
             ->redirectUrl($redirectUrl)
             ->redirect()
@@ -56,6 +66,7 @@ class OAuthController extends Controller
 
         $referrer_code = null;
         $redirect_to = null;
+        $storefront = null;
 
         // parse additional variables
         $state = $r->input('state');
@@ -69,7 +80,11 @@ class OAuthController extends Controller
 
             if(!empty($result['redirect_to'])) {
                 $redirect_to = $result['redirect_to'];
-            } 
+            }
+
+            if(!empty($result['storefront'])) {
+                $storefront = Store::normalizeStorefrontCode($result['storefront']);
+            }
         }
 
         $oauthUser = Socialite::driver($provider)
@@ -96,6 +111,10 @@ class OAuthController extends Controller
                 $user->markEmailAsVerified();
             }
             $user->save();
+        }
+
+        if (method_exists($user, 'rememberPreferredStorefront')) {
+            $user->rememberPreferredStorefront($storefront);
         }
 
         if ($remoteAvatar && $user->profile) {

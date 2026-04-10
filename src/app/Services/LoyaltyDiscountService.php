@@ -3,6 +3,8 @@
 namespace Backpack\Profile\app\Services;
 
 use Backpack\Profile\app\Models\Profile;
+use Backpack\Profile\app\Support\StorefrontFeatureGate;
+use Backpack\Store\app\Services\Store;
 use Illuminate\Database\Eloquent\Model;
 
 class LoyaltyDiscountService
@@ -14,7 +16,17 @@ class LoyaltyDiscountService
 
     public function isEnabled(): bool
     {
+        return app(StorefrontFeatureGate::class)->featureEnabled('profile.loyalty', false);
+    }
+
+    public function isConfigured(): bool
+    {
         return (bool) \Settings::get('profile.loyalty.enabled', false);
+    }
+
+    public function isEnabledForStorefront(?string $storefront = null): bool
+    {
+        return app(StorefrontFeatureGate::class)->featureEnabled('profile.loyalty', false, $storefront);
     }
 
     public function baseCurrency(): string
@@ -86,7 +98,7 @@ class LoyaltyDiscountService
 
     public function recalculateForUserId(int $userId): ?float
     {
-        if ($userId <= 0 || !$this->isEnabled()) {
+        if ($userId <= 0 || !$this->isConfigured()) {
             return null;
         }
 
@@ -148,6 +160,7 @@ class LoyaltyDiscountService
                 'id',
                 'orderable_id',
                 'orderable_type',
+                'storefront_code',
                 'currency_code',
                 'fx_rate',
                 'price',
@@ -178,7 +191,11 @@ class LoyaltyDiscountService
             })
             ->get();
 
-        return round($orders->sum(fn (Model $order) => $this->resolveOrderSpentAmount($order)), 2);
+        return round($orders
+            ->filter(fn (Model $order) => $this->isEnabledForStorefront(
+                (string) ($order->storefront_code ?: Store::defaultStorefront())
+            ))
+            ->sum(fn (Model $order) => $this->resolveOrderSpentAmount($order)), 2);
     }
 
     protected function resolveOrderSpentAmount(Model $order): float

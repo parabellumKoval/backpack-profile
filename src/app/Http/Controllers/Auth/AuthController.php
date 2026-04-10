@@ -3,6 +3,7 @@
 // src/app/Http/Controllers/Auth/AuthController.php
 namespace Backpack\Profile\app\Http\Controllers\Auth;
 
+use Backpack\Profile\app\Support\StorefrontFeatureGate;
 use Backpack\Profile\app\Services\WpPasswordChecker;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
@@ -12,7 +13,6 @@ use Illuminate\Validation\Rules\Password;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
-use Backpack\Settings\Facades\Settings;
 use Backpack\Profile\app\Models\Profile;
 
 class AuthController extends Controller
@@ -45,7 +45,7 @@ class AuthController extends Controller
 
     public function register(Request $r)
     {
-        if (!Settings::get('profile.users.allow_registration', true)) {
+        if (!app(StorefrontFeatureGate::class)->featureEnabled('profile.users.allow_registration', true, null, [], null)) {
             return response()->json(['message' => 'Registration disabled'], 403);
         }
 
@@ -61,6 +61,9 @@ class AuthController extends Controller
         $user->email = $data['email'];
         $user->password = Hash::make($data['password']);
         $user->save();
+        if (method_exists($user, 'rememberPreferredStorefront')) {
+            $user->rememberPreferredStorefront();
+        }
 
         // Default event
         event(new Registered($user));
@@ -117,7 +120,11 @@ class AuthController extends Controller
         // --- КОНЕЦ -- С ПРОВЕРКОЙ WP пароля
 
 
-        if (\Settings::get('profile.users.require_email_verification', true)) {
+        if (method_exists($user, 'rememberPreferredStorefront')) {
+            $user->rememberPreferredStorefront();
+        }
+
+        if (app(StorefrontFeatureGate::class)->featureEnabled('profile.users.require_email_verification', true, null, [], null)) {
             $verified = method_exists($user, 'hasVerifiedEmail')
                 ? $user->hasVerifiedEmail()
                 : !empty($user->email_verified_at);
@@ -208,7 +215,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Email is unchanged'], 422);
         }
 
-        $requiresVerification = Settings::get('profile.users.require_email_verification', true)
+        $requiresVerification = app(StorefrontFeatureGate::class)->featureEnabled('profile.users.require_email_verification', true, null, [], null)
             && $user instanceof MustVerifyEmail;
 
         $user->email = $data['email'];
@@ -218,6 +225,9 @@ class AuthController extends Controller
         }
 
         $user->save();
+        if (method_exists($user, 'rememberPreferredStorefront')) {
+            $user->rememberPreferredStorefront();
+        }
 
         if ($requiresVerification && method_exists($user, 'sendEmailVerificationNotification')) {
             $user->sendEmailVerificationNotification();
