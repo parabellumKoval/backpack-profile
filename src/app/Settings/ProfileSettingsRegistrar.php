@@ -454,6 +454,7 @@ class ProfileSettingsRegistrar implements SettingsRegistrarInterface
                             ->default((float) config('backpack.profile.bot_generation.avatar_prompt.distribution.face_side_45_max_percent', 4))
                             ->cast('float')
                             ->attributes(['min' => 0, 'max' => 100, 'step' => 0.5])
+                            ->hint('Жёсткий максимум среди аватаров с лицом. Например, 4 = не больше 4 из 100 людских аватаров; при маленьком батче может быть 0.')
                             ->tab('Распределение')
                     );
 

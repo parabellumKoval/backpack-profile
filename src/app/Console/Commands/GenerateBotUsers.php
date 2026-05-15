@@ -659,7 +659,88 @@ class GenerateBotUsers extends Command
             );
         }
 
+        return $this->enforceAvatarPlanDistribution($inputs);
+    }
+
+    private function enforceAvatarPlanDistribution(array $inputs): array
+    {
+        $faceSlots = array_values(array_filter(
+            array_keys($inputs),
+            fn (int|string $slot): bool => ($inputs[$slot]['avatar_type'] ?? null) === 'face'
+        ));
+
+        if ($faceSlots === []) {
+            return $inputs;
+        }
+
+        $maxSideCount = (int) floor(count($faceSlots) * ($this->avatarSideAngleMaxPercent() / 100));
+        $sideSeen = 0;
+        $replacementIndex = 0;
+        $replacementAngles = $this->faceCameraAngleFallbacks();
+
+        foreach ($faceSlots as $slot) {
+            $angle = (string) ($inputs[$slot]['face_camera_angle'] ?? '');
+            if (!$this->isSideFaceCameraAngle($angle)) {
+                continue;
+            }
+
+            $sideSeen++;
+            if ($sideSeen <= $maxSideCount) {
+                continue;
+            }
+
+            $inputs[$slot]['face_camera_angle'] = $replacementAngles[$replacementIndex % count($replacementAngles)];
+            $replacementIndex++;
+        }
+
         return $inputs;
+    }
+
+    private function avatarSideAngleMaxPercent(): float
+    {
+        $value = (float) $this->setting(
+            'profile.bot_generation.avatar_prompt.distribution.face_side_45_max_percent',
+            (float) config('backpack.profile.bot_generation.avatar_prompt.distribution.face_side_45_max_percent', 4)
+        );
+
+        return max(0.0, min(100.0, $value));
+    }
+
+    private function isSideFaceCameraAngle(string $angle): bool
+    {
+        $normalized = strtolower($angle);
+
+        return str_contains($normalized, '45')
+            || str_contains($normalized, 'side angle')
+            || str_contains($normalized, 'side profile')
+            || str_contains($normalized, 'profile view')
+            || str_contains($normalized, 'looking sideways')
+            || str_contains($normalized, 'looking away');
+    }
+
+    private function faceCameraAngleFallbacks(): array
+    {
+        $variants = $this->setting(
+            'profile.bot_generation.avatar_prompt.variants.face_camera_angle',
+            config('backpack.profile.bot_generation.avatar_prompt.variants.face_camera_angle', [])
+        );
+        $fallbacks = [];
+
+        foreach (is_array($variants) ? $variants : [] as $variant) {
+            $value = is_array($variant)
+                ? trim((string) ($variant['text'] ?? $variant['value'] ?? $variant['line'] ?? ''))
+                : trim((string) $variant);
+
+            if ($value !== '' && !$this->isSideFaceCameraAngle($value)) {
+                $fallbacks[] = $value;
+            }
+        }
+
+        return array_values(array_unique($fallbacks)) ?: [
+            'frontal selfie, eye-level',
+            'small head turn under 15 degrees',
+            'near-frontal mirror selfie',
+        ];
     }
 
     private function allocateAvatarTypes(int $count): array

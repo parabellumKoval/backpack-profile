@@ -9,6 +9,8 @@ use Backpack\Profile\app\Models\NotificationEvent;
 use Backpack\Profile\app\Models\NotificationRead;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class NotificationService
 {
@@ -145,7 +147,15 @@ class NotificationService
 
         $notification->loadMissing('event');
 
-        broadcast(new NotificationBroadcasted($notification));
+        try {
+            broadcast(new NotificationBroadcasted($notification));
+        } catch (Throwable $exception) {
+            Log::warning('Notification broadcast failed.', [
+                'notification_id' => $notification->getKey(),
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 
     protected function shouldBroadcast(Notification $notification): bool
