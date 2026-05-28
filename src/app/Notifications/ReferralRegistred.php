@@ -7,7 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ReferralRegistred extends Notification
+class ReferralRegistred extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -23,6 +23,7 @@ class ReferralRegistred extends Notification
     {
         $this->usermeta = $value;
         $this->level = $lvl;
+        $this->onQueue((string) config('queue.names.emails', 'emails'));
     }
 
     /**

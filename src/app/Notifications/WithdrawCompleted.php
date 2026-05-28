@@ -7,7 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class WithdrawCompleted extends Notification
+class WithdrawCompleted extends Notification implements ShouldQueue
 {
     use Queueable;
     
@@ -21,6 +21,7 @@ class WithdrawCompleted extends Notification
     public function __construct($value)
     {
         $this->transaction = $value;
+        $this->onQueue((string) config('queue.names.emails', 'emails'));
     }
 
     /**

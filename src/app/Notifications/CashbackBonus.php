@@ -7,7 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class CashbackBonus extends Notification
+class CashbackBonus extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -21,6 +21,7 @@ class CashbackBonus extends Notification
     public function __construct($value)
     {
         $this->transaction = $value;
+        $this->onQueue((string) config('queue.names.emails', 'emails'));
     }
 
     /**
